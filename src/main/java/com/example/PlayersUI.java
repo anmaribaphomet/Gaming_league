@@ -61,13 +61,13 @@ public class PlayersUI extends JFrame {
         tfPlayerId.setEditable(false); // como se incrementa solo , no editable al insertar
         addToForm(form, c, row++, "ID:", tfPlayerId, "First name:", tfFirstName, "Last name:", tfLastName);
 
-        // Second row: gender, age, telephone
+        // Segunda casilla: gender, age, telephone
         addToForm(form, c, row++, "Gender:", tfGender, "Age:", tfAge, "Telephone:", tfTelephone);
 
-        // Third row: address (wide)
+        // Tercera casilla: address (wide)
         addToForm(form, c, row++, "Address:", tfAddress, null, null, "Email:", tfEmail);
 
-        add(form, BorderLayout.SOUTH);
+        add(form, BorderLayout.SOUTH);//indica que se coloque el panel en la parte abajo el panel es elq ue contiene los tf
 
         // Panel de botones derecha seran las acciones CRUD
         JPanel buttons = new JPanel(new GridLayout(4, 1, 6, 6));//4 filas, una sola columna (vertical uno debajo del otro), 6x6 px de espacio entre cada boton
