@@ -265,7 +265,7 @@ public class Eventos {
 
     //-------------------------INSERT eventos
     public void evtInsertPlayers(java.awt.event.ActionEvent evt) {
-        //TODO
+        //TODO J
     }
 
     public void evtInsertRankings(java.awt.event.ActionEvent evt) {
