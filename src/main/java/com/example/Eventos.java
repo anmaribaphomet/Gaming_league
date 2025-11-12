@@ -296,7 +296,7 @@ public class Eventos {
 
     //-------------------------DELETE
     public void evtEliminarPlayers(java.awt.event.ActionEvent evt) {
-        //TODO
+         //TODO
     }
 
     public void evtEliminarRankings(java.awt.event.ActionEvent evt) {
