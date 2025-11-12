@@ -84,6 +84,7 @@ public class Main extends JFrame {
         // --- BROWSE (Buscar) ---
         menuBrowse = new JMenu("Buscar");
 
+
         // Jugadores
         gestionDeJugadores = new JMenu("Clasificación de jugadores");
 
