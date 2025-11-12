@@ -33,45 +33,33 @@ public class Database {
         }
     }
 
-    // Select
-    // este metdo sirve para cualquier consulta SELECT
-    // recibe una consulta y cuantas columnas quieres leer
-    public List<String[]> selectQuery(String sql, int columnas) {
-        // Crea una lista vacia para almacenar los resultados
-        // Cada elemento sera un array de Strings representando una fila
-        List<String[]> resultados = new ArrayList<>();
+    public ResultSet query(String sql) throws SQLException {
 
-        //  automaticamente cierra Connection, PreparedStatement y ResultSet
-        try (Connection conn = getConnection();           // Obtiene conexion a la base de datos
-             PreparedStatement ps = conn.prepareStatement(sql);  // Prepara la consulta SQL
-             ResultSet rs = ps.executeQuery()) {          // Ejecuta la consulta y obtiene resultados
+        ResultSet rs = null;
+        Statement statement = getConnection().createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                ResultSet.CONCUR_READ_ONLY);
+        rs = statement.executeQuery(sql);
 
-
-            // rs.next() avanza a la siguiente fila y devuelve false cuando no hay mas filas
-            while (rs.next()) {
-                // Crea un nuevo array de Strings para almacenar los valores de la fila actual
-                // El tamaño del array depende del numero de columnas que se le hayan mandado
-                String[] row = new String[columnas];
-
-                // pasa sobre cada columna de la fila actual
-                for (int i = 0; i < columnas; i++) {
-                    // Obtiene el valor de cada columna como String
-                    // i+1 porque JDBC numera las columnas empezando desde 1, no desde 0
-                    row[i] = rs.getString(i + 1);
-                }
-
-                // Agrega el array completo (la fila) a la lista de resultados
-                resultados.add(row);
-            }
-
-            // Captura cualquier error de SQL que pueda ocurrir durante la conexión o consulta
-        } catch (SQLException e) {
-            // Muestra el mensaje de error en consola
-            System.out.println("Error en SELECT: " + e.getMessage());
-        }
-
-        // Devuelve la lista con todos los resultados
-        // Si hubo error o no hay resultados, devuelve lista vacía
-        return resultados;
+        return rs;
     }
+
+    public ResultSet query(String sql, int scroll, int concur) throws SQLException {
+
+        ResultSet rs = null;
+
+        Statement statement = getConnection().createStatement(scroll, concur);
+        rs = statement.executeQuery(sql);
+
+        return rs;
+    }
+
+    public int update(String sql) throws SQLException {
+        int result = -1;
+
+        Statement statement = getConnection().createStatement(ResultSet.CONCUR_UPDATABLE,
+                ResultSet.TYPE_FORWARD_ONLY);
+        result = statement.executeUpdate(sql);
+        return result;
+    }
+
 }
