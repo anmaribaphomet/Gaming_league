@@ -836,6 +836,4 @@ public class Eventos {
                     JOptionPane.ERROR_MESSAGE);
         }
     }
-
-    
 }

@@ -6,10 +6,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.table.DefaultTableModel;
 
-/**
- *
- * @author rnavarro
- */
 public class JDBCTableAdapter extends DefaultTableModel {
 
     private static final String CLASS_NAME = JDBCTableAdapter.class.getSimpleName();
