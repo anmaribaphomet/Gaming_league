@@ -1,5 +1,8 @@
 package com.example;
 
+import javax.swing.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
@@ -70,13 +73,141 @@ public class Eventos {
 
     //Eliminar por id (matches_id)
     public void evtEliminarClaveMatches(java.awt.event.ActionEvent evt) {
-        //TODO
-    }
-//eliminar por codigo de juego (game_code)
-    public void evtEliminarJuegoMatches(java.awt.event.ActionEvent evt) {
-        //TODO
+
+        // Pedir al usuario el ID del match a eliminar
+        String input = JOptionPane.showInputDialog(null,
+                "Ingresa el ID del match que deseas eliminar:",
+                "Eliminar match por ID",
+                JOptionPane.QUESTION_MESSAGE);
+
+        if (input == null) return; // Si presiona Cancelar, salir
+
+        int matchId;
+        try {
+            matchId = Integer.parseInt(input); // Convertir input a entero
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(null,
+                    "El ID debe ser un número entero.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Database db = new Database();
+
+        try (Connection conn = db.getConnection()) { // Abrir conexión a la base de datos
+            conn.setAutoCommit(false); // Iniciamos la transacción manualmente, todo lo que hagamos después de esto hasta
+            // commit() o rollback() estará dentro de la transacción
+
+            try {
+                // Preparar DELETE usando match_id
+                PreparedStatement stmt = conn.prepareStatement(
+                        "DELETE FROM matches WHERE match_id = ?"
+                );
+                stmt.setInt(1, matchId);
+
+                int rows = stmt.executeUpdate(); // Ejecutamos la eliminación dentro de la transacción
+
+                if (rows > 0) {
+                    conn.commit(); // Confirmamos la transacción: los cambios se aplican permanentemente
+                    JOptionPane.showMessageDialog(null,
+                            "Match eliminado correctamente.",
+                            "Éxito",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    conn.rollback(); // Si no se eliminó nada, revertimos la transacción
+                    JOptionPane.showMessageDialog(null,
+                            "No existe un match con ese ID.",
+                            "Aviso",
+                            JOptionPane.WARNING_MESSAGE);
+                }
+
+            } catch (SQLException e) {
+                conn.rollback(); // Si ocurre algún error dentro de la transacción, revertimos todo
+                JOptionPane.showMessageDialog(null,
+                        "Error al eliminar el match:\n" + e.getMessage(),
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            } finally {
+                conn.setAutoCommit(true); // Restauramos el modo autocommit para futuras operaciones
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null,
+                    "Error de conexión a la base de datos:\n" + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
+    //eliminar por codigo de juego (game_code)
+    public void evtEliminarJuegoMatches(java.awt.event.ActionEvent evt) {
+
+        // Pedir al usuario el código del juego
+        String input = JOptionPane.showInputDialog(null,
+                "Ingresa el código del juego cuyos matches deseas eliminar:",
+                "Eliminar matches por código de juego",
+                JOptionPane.QUESTION_MESSAGE);
+
+        if (input == null) return;
+
+        int gameCode;
+        try {
+            gameCode = Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(null,
+                    "El código debe ser un número entero.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Database db = new Database();
+
+        try (Connection conn = db.getConnection()) { // Abrimos conexión
+            conn.setAutoCommit(false); // Iniciamos transacción, todas las operaciones siguientes se ejecutarán dentro de esta
+            // transacción
+
+            try {
+                // Preparar DELETE para eliminar todos los matches con el game_code especificado
+                PreparedStatement stmt = conn.prepareStatement(
+                        "DELETE FROM matches WHERE game_code = ?"
+                );
+                stmt.setInt(1, gameCode);
+
+                int rows = stmt.executeUpdate(); // Ejecutamos DELETE dentro de la transacción
+
+                if (rows > 0) {
+                    conn.commit(); // Confirmamos la transacción: los matches se eliminan definitivamente
+                    JOptionPane.showMessageDialog(null,
+                            "Matches eliminados correctamente.",
+                            "Éxito",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    conn.rollback(); // Si no hubo registros afectados, revertimos la transacción
+                    JOptionPane.showMessageDialog(null,
+                            "No existen matches con ese código de juego.",
+                            "Aviso",
+                            JOptionPane.WARNING_MESSAGE);
+                }
+
+            } catch (SQLException e) {
+                conn.rollback(); // Si ocurre algún error durante la transacción, se revierte todo
+                JOptionPane.showMessageDialog(null,
+                        "Error al eliminar los matches:\n" + e.getMessage(),
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            } finally {
+                conn.setAutoCommit(true); // Restauramos autocommit para otras operaciones fuera de la transacción
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null,
+                    "Error de conexión a la base de datos:\n" + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
 
 
@@ -318,27 +449,392 @@ public class Eventos {
 
     }
 
+    //-------------------------DELETE------------------------------------
+
+    // Método para eliminar jugadores
     public void evtEliminarPlayers(java.awt.event.ActionEvent evt) {
-        //TODO
+
+        // Mostrar un cuadro de diálogo para que el usuario ingrese el ID del jugador a eliminar
+        String input = JOptionPane.showInputDialog(null,
+                "Ingresa el ID del jugador que deseas eliminar:",
+                "Eliminar jugador",
+                JOptionPane.QUESTION_MESSAGE);
+
+        // Si el usuario presiona "Cancelar", input será null y se sale del método
+        if (input == null) {
+            return;
+        }
+
+        // Convertir el input a un número entero, validando que sea un número válido
+        int playerId;
+        try {
+            playerId = Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            // Si no es un número, mostrar mensaje de error y salir
+            JOptionPane.showMessageDialog(null,
+                    "El ID debe ser un número entero.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Crear instancia de la clase Database para manejar la conexión
+        Database db = new Database();
+
+        try (Connection conn = db.getConnection()) { // Abrir conexión a la base de datos
+
+            // Preparar la sentencia SQL DELETE con un parámetro (?)
+            PreparedStatement stmt = conn.prepareStatement(
+                    "DELETE FROM players WHERE player_id = ?"
+            );
+            stmt.setInt(1, playerId); // Asignar el valor del ID al parámetro
+
+            // Ejecutar la eliminación y obtener el número de filas afectadas
+            int rows = stmt.executeUpdate();
+
+            if (rows > 0) {
+                // Si se eliminó algún  registro, mostrar mensaje de éxito
+                JOptionPane.showMessageDialog(null,
+                        "Jugador eliminado correctamente.\n" +
+                                "Los registros relacionados también fueron eliminados automáticamente.",
+                        "Éxito",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                // Si no se encontró ningún registro con ese ID, mostrar advertencia
+                JOptionPane.showMessageDialog(null,
+                        "No existe un jugador con ese ID.",
+                        "Aviso",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+
+        } catch (SQLException e) {
+            // Capturar errores de SQL y mostrarlos en un mensaje
+            JOptionPane.showMessageDialog(null,
+                    "Error al eliminar jugador:\n" + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
+    // Método para eliminar rankings
     public void evtEliminarRankings(java.awt.event.ActionEvent evt) {
-        //TODO
+
+        // Solicitar al usuario el ID del ranking a eliminar
+        String input = JOptionPane.showInputDialog(null,
+                "Ingresa el ID del ranking que deseas eliminar:",
+                "Eliminar ranking",
+                JOptionPane.QUESTION_MESSAGE);
+
+        if (input == null) return; // Si canceló, salir
+
+        int rankingId;
+        try {
+            rankingId = Integer.parseInt(input); // Convertir a entero
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(null,
+                    "El ID debe ser un número entero.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Database db = new Database();
+
+        try (Connection conn = db.getConnection()) {
+
+            // Preparar la sentencia DELETE para eliminar el ranking
+            PreparedStatement stmt = conn.prepareStatement(
+                    "DELETE FROM players_game_ranking WHERE player_id = ?"
+            );
+            stmt.setInt(1, rankingId);
+
+            int rows = stmt.executeUpdate(); // Ejecutar eliminación
+
+            if (rows > 0) {
+                JOptionPane.showMessageDialog(null,
+                        "Ranking eliminado correctamente.\n" +
+                                "Los registros relacionados también fueron eliminados automáticamente.",
+                        "Éxito",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(null,
+                        "No existe un ranking con ese ID.",
+                        "Aviso",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null,
+                    "Error al eliminar ranking:\n" + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
+
+    // Método para eliminar juegos
     public void evtEliminargames(java.awt.event.ActionEvent evt) {
-        //TODO
+
+        // Solicitar ID del juego a eliminar
+        String input = JOptionPane.showInputDialog(null,
+                "Ingresa el ID del juego que deseas eliminar:",
+                "Eliminar juego",
+                JOptionPane.QUESTION_MESSAGE);
+
+        if (input == null) return;
+
+        int gameId;
+        try {
+            gameId = Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(null,
+                    "El ID debe ser un número entero.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Database db = new Database();
+
+        try (Connection conn = db.getConnection()) {
+
+            // Preparar DELETE para eliminar el juego por su código
+            PreparedStatement stmt = conn.prepareStatement(
+                    "DELETE FROM games WHERE game_code = ?"
+            );
+            stmt.setInt(1, gameId);
+
+            int rows = stmt.executeUpdate();
+
+            if (rows > 0) {
+                JOptionPane.showMessageDialog(null,
+                        "Juego eliminado correctamente.\n" +
+                                "Los registros relacionados también fueron eliminados automáticamente.",
+                        "Éxito",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(null,
+                        "No existe un juego con ese ID.",
+                        "Aviso",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null,
+                    "Error al eliminar juego:\n" + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
+
+    // Método para eliminar ligas
     public void evtEliminarLeagues(java.awt.event.ActionEvent evt) {
-        //TODO
+
+        String input = JOptionPane.showInputDialog(null,
+                "Ingresa el ID de la liga que deseas eliminar:",
+                "Eliminar liga",
+                JOptionPane.QUESTION_MESSAGE);
+
+        if (input == null) return;
+
+        int leagueId;
+        try {
+            leagueId = Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(null,
+                    "El ID debe ser un número entero.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Database db = new Database();
+
+        try (Connection conn = db.getConnection()) {
+
+            // DELETE en la tabla leagues usando el ID de liga
+            PreparedStatement stmt = conn.prepareStatement(
+                    "DELETE FROM leagues WHERE league_id = ?"
+            );
+            stmt.setInt(1, leagueId);
+
+            int rows = stmt.executeUpdate();
+
+            if (rows > 0) {
+                JOptionPane.showMessageDialog(null,
+                        "Liga eliminada correctamente.\n" +
+                                "Los registros relacionados también fueron eliminados automáticamente.",
+                        "Éxito",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(null,
+                        "No existe una liga con ese ID.",
+                        "Aviso",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null,
+                    "Error al eliminar liga:\n" + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
+
+    // Método para eliminar registros de liga-juego
     public void evtEliminarLeaguesgames(java.awt.event.ActionEvent evt) {
-        //TODO
+
+        String input = JOptionPane.showInputDialog(null,
+                "Ingresa el ID del registro de liga-juego que deseas eliminar:",
+                "Eliminar registro liga-juego",
+                JOptionPane.QUESTION_MESSAGE);
+
+        if (input == null) return;
+
+        int lgId;
+        try {
+            lgId = Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(null,
+                    "El ID debe ser un número entero.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Database db = new Database();
+
+        try (Connection conn = db.getConnection()) {
+
+            PreparedStatement stmt = conn.prepareStatement(
+                    "DELETE FROM leagues_game WHERE league_id = ?"
+            );
+            stmt.setInt(1, lgId);
+
+            int rows = stmt.executeUpdate();
+
+            if (rows > 0) {
+                JOptionPane.showMessageDialog(null,
+                        "Registro de liga-juego eliminado correctamente.",
+                        "Éxito",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(null,
+                        "No existe un registro con ese ID.",
+                        "Aviso",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null,
+                    "Error al eliminar el registro:\n" + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
+
+    // Método para eliminar registros de equipo-jugador
     public void evtEliminarTeamsPlayers(java.awt.event.ActionEvent evt) {
-        //TODO
+
+        String input = JOptionPane.showInputDialog(null,
+                "Ingresa el ID del registro de equipo-jugador que deseas eliminar:",
+                "Eliminar registro equipo-jugador",
+                JOptionPane.QUESTION_MESSAGE);
+
+        if (input == null) return;
+
+        int tpId;
+        try {
+            tpId = Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(null,
+                    "El ID debe ser un número entero.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Database db = new Database();
+
+        try (Connection conn = db.getConnection()) {
+
+            PreparedStatement stmt = conn.prepareStatement(
+                    "DELETE FROM team_players WHERE team_id = ?"
+            );
+            stmt.setInt(1, tpId);
+
+            int rows = stmt.executeUpdate();
+
+            if (rows > 0) {
+                JOptionPane.showMessageDialog(null,
+                        "Registro de equipo-jugador eliminado correctamente.",
+                        "Éxito",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(null,
+                        "No existe un registro con ese ID.",
+                        "Aviso",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null,
+                    "Error al eliminar el registro:\n" + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
+
+    // Método para eliminar equipos
     public void evtEliminarTeams(java.awt.event.ActionEvent evt) {
-        //TODO
+
+        String input = JOptionPane.showInputDialog(null,
+                "Ingresa el ID del equipo que deseas eliminar:",
+                "Eliminar equipo",
+                JOptionPane.QUESTION_MESSAGE);
+
+        if (input == null) return;
+
+        int teamId;
+        try {
+            teamId = Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(null,
+                    "El ID debe ser un número entero.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        Database db = new Database();
+
+        try (Connection conn = db.getConnection()) {
+
+            PreparedStatement stmt = conn.prepareStatement(
+                    "DELETE FROM teams WHERE team_id = ?"
+            );
+            stmt.setInt(1, teamId);
+
+            int rows = stmt.executeUpdate();
+
+            if (rows > 0) {
+                JOptionPane.showMessageDialog(null,
+                        "Equipo eliminado correctamente.\n" +
+                                "Los registros relacionados también fueron eliminados automáticamente.",
+                        "Éxito",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(null,
+                        "No existe un equipo con ese ID.",
+                        "Aviso",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(null,
+                    "Error al eliminar el equipo:\n" + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     
