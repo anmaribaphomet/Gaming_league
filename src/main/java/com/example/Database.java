@@ -9,7 +9,7 @@ public class Database {
     private final String url = "jdbc:postgresql://localhost:5432/Gaming_League";
     private final String user = "developer";
     //private final String password = "2006";
-    private final String password = "Yoongi1910";
+    private final String password = "2006";
 
 
     public Database() {
