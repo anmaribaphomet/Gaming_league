@@ -5,7 +5,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+
 import java.util.logging.Logger;
+
 
 public class Eventos {
     private Database db;
@@ -390,40 +392,62 @@ public class Eventos {
         }
     }
 
-
-
-
-
     //-------------------------INSERT eventos
     public void evtInsertPlayers(java.awt.event.ActionEvent evt) {
         //TODO
+        String[] labels = {"Nombre", "Apellido", "Género", "Dirección", "Teléfono", "Email", "Edad (Número)"};
+        String sql = "INSERT INTO public.players (first_name, last_name, gender, address, telephone_number, email, age) VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+        // Llamamos a la nueva clase estática
+        TableInsert.mostrar(this.db, "Nuevo Jugador", labels, sql, new int[]{6});
     }
 
     public void evtInsertRankings(java.awt.event.ActionEvent evt) {
         //TODO
+        String[] labels = {"ID Jugador (Número)", "Código Juego", "Ranking (Núm)"};
+        String sql = "INSERT INTO public.players_game_ranking (player_id, game_code, ranking) VALUES (?, ?, ?)";
+
+        TableInsert.mostrar(this.db, "Nuevo Ranking", labels, sql, new int[]{0, 2});
+
     }
     public void evtInsertgames(java.awt.event.ActionEvent evt) {
         //TODO
+        String[] labels = {"Código Juego", "Nombre", "Descripción", "Plataforma", "Categoría"};
+        String sql = "INSERT INTO public.games (game_code, game_name, game_description, platform, category) VALUES (?, ?, ?, ?, ?)";
+
+        TableInsert.mostrar(this.db, "Nuevo Juego", labels, sql, null);
+
     }
     public void evtInsertLeagues(java.awt.event.ActionEvent evt) {
         //TODO
+        String[] labels = {"Nombre Liga", "Rango", "Categoría", "Duración"};
+        String sql = "INSERT INTO public.leagues (league_name, rank, category, league_duration) VALUES (?, ?, ?, ?)";
+
+        TableInsert.mostrar(this.db, "Nueva Liga", labels, sql, null);
     }
     public void evtInsertLeaguesgames(java.awt.event.ActionEvent evt) {
         //TODO
+        String[] labels = {"ID Liga (Número)", "Código Juego"};
+        String sql = "INSERT INTO public.leagues_game (league_id, game_code) VALUES (?, ?)";
+
+        TableInsert.mostrar(this.db, "Asignar Juego a Liga", labels, sql, new int[]{0});
     }
     public void evtInsertTeamsPlayers(java.awt.event.ActionEvent evt) {
         //TODO
+        String[] labels = {"Nombre Equipo", "ID Capitán (Número)"};
+        String sql = "INSERT INTO public.teams (team_name, created_by_player_id, date_created) VALUES (?, ?, CURRENT_DATE)";
+
+        TableInsert.mostrar(this.db, "Nuevo Equipo", labels, sql, new int[]{1});
+
     }
     public void evtInsertTeams(java.awt.event.ActionEvent evt) {
         //TODO
+        String[] labels = {"ID Equipo (Número)", "ID Jugador (Número)", "Fecha Inicio (YYYY-MM-DD)"};
+        String sql = "INSERT INTO public.team_players (team_id, player_id, date_from) VALUES (?, ?, ?::date)";
+
+        TableInsert.mostrar(this.db, "Agregar Jugador a Equipo", labels, sql, new int[]{0, 1});
+
     }
-
-
-
-
-
-
-
 
     //-------------------------DELETE------------------------------------
 
@@ -812,4 +836,6 @@ public class Eventos {
                     JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    
 }
