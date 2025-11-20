@@ -8,7 +8,9 @@ public class Database {
 
     private final String url = "jdbc:postgresql://localhost:5432/Gaming_League";
     private final String user = "developer";
-    private final String password = "2006";
+    //private final String password = "2006";
+    private final String password = "Yoongi1910";
+
 
     public Database() {
         try {
@@ -60,6 +62,15 @@ public class Database {
                 ResultSet.TYPE_FORWARD_ONLY);
         result = statement.executeUpdate(sql);
         return result;
+    }
+
+    public int executePstmt(Connection conn, String sql, Object... params) throws SQLException {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            for (int i = 0; i < params.length; i++) {
+                pstmt.setObject(i + 1, params[i]);
+            }
+            return pstmt.executeUpdate();
+        }
     }
 
 }
