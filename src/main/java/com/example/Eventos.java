@@ -317,7 +317,7 @@ public class Eventos {
         TableInsert.mostrar(this.db, "Agregar Jugador a Equipo", labels, sql, new int[]{0, 1});
 
     }
-    //-------------------------DELETE
+
     public void evtEliminarPlayers(java.awt.event.ActionEvent evt) {
         //TODO
     }
