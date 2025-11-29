@@ -5,7 +5,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-
 import java.util.logging.Logger;
 
 
@@ -15,7 +14,7 @@ public class Eventos {
     private static final String CLASS_NAME = Main.class.getSimpleName();
     private static final Logger LOGGER = Logger.getLogger(CLASS_NAME);
 
-    // 🔹 Constructor verdadero (sin void)
+    // 🔹 Constructor
     public Eventos(javax.swing.JDesktopPane desktopPane) {
         this.desktopPane = desktopPane;
 
@@ -32,44 +31,44 @@ public class Eventos {
     public void evtSelectMatches(java.awt.event.ActionEvent evt) {
         try {
             String sql = """
-                 SELECT\s
-              m.match_id,
-             g.game_name AS Juego,
-             p1.first_name || ' ' || p1.last_name AS Jugador1,
-             p2.first_name || ' ' || p2.last_name AS Jugador2,
-             m.match_date,
-             m.result_match,
-             m.result_teams
-             FROM public.matches m
-             JOIN public.games g ON m.game_code = g.game_code
-             JOIN public.players p1 ON m.player_1_id = p1.player_id
-            JOIN public.players p2 ON m.player_2_id = p2.player_id
-            ORDER BY m.match_id;
-                    
-            """;
+    SELECT
+        m.match_id AS "match_id:ID de Partido",
+        g.game_name AS "game_name:Juego",
+        p1.first_name || ' ' || p1.last_name AS "player_1_id:Capitan A",
+        p2.first_name || ' ' || p2.last_name AS "player_2_id:Capitan B",
+        m.match_date AS "match_date:Fecha",
+        m.result_match AS "result_match:Resultado Encuentro",
+        m.result_teams AS "result_teams:Resultado Equipos"
+    FROM public.matches m
+    JOIN public.games g ON m.game_code = g.game_code
+    JOIN public.players p1 ON m.player_1_id = p1.player_id
+    JOIN public.players p2 ON m.player_2_id = p2.player_id
+    ORDER BY m.match_id;
+""";
+
 
             ResultSet rs = db.query(sql);
             JDBCTableAdapter modelo = new JDBCTableAdapter(rs);
 
-            // Usa el listener genérico, indicando la tabla y su clave primaria
-            modelo.addTableModelListener(new GenericTableListener(db, "matches", "match_id"));
+            // Listener para insertar/eliminar
 
-            TablaSelects browser = new TablaSelects("Matches", modelo);
-            browser.setVisible(true);
+            //Crear la vista
+            TablaSelects browser = new TablaSelects("Emparejamiento", modelo, "matches", this);
+
+            // agregar al desktopPane
             this.desktopPane.add(browser);
+            browser.setVisible(true);
 
         } catch (SQLException ex) {
             LOGGER.severe("Error en SELECT: " + ex.getMessage());
         }
     }
-    //Insertar con transacciones
 
+    //Insertar con transacciones
     public void evtInsertMatches(java.awt.event.ActionEvent evt) {
         //TODO
     }
 
-
-    //Eliminar con transacciones
 
     //Eliminar por id (matches_id)
     public void evtEliminarClaveMatches(java.awt.event.ActionEvent evt) {
@@ -140,76 +139,6 @@ public class Eventos {
         }
     }
 
-    //eliminar por codigo de juego (game_code)
-    public void evtEliminarJuegoMatches(java.awt.event.ActionEvent evt) {
-
-        // Pedir al usuario el código del juego
-        String input = JOptionPane.showInputDialog(null,
-                "Ingresa el código del juego cuyos matches deseas eliminar:",
-                "Eliminar matches por código de juego",
-                JOptionPane.QUESTION_MESSAGE);
-
-        if (input == null) return;
-
-        int gameCode;
-        try {
-            gameCode = Integer.parseInt(input);
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null,
-                    "El código debe ser un número entero.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        Database db = new Database();
-
-        try (Connection conn = db.getConnection()) { // Abrimos conexión
-            conn.setAutoCommit(false); // Iniciamos transacción, todas las operaciones siguientes se ejecutarán dentro de esta
-            // transacción
-
-            try {
-                // Preparar DELETE para eliminar todos los matches con el game_code especificado
-                PreparedStatement stmt = conn.prepareStatement(
-                        "DELETE FROM matches WHERE game_code = ?"
-                );
-                stmt.setInt(1, gameCode);
-
-                int rows = stmt.executeUpdate(); // Ejecutamos DELETE dentro de la transacción
-
-                if (rows > 0) {
-                    conn.commit(); // Confirmamos la transacción: los matches se eliminan definitivamente
-                    JOptionPane.showMessageDialog(null,
-                            "Matches eliminados correctamente.",
-                            "Éxito",
-                            JOptionPane.INFORMATION_MESSAGE);
-                } else {
-                    conn.rollback(); // Si no hubo registros afectados, revertimos la transacción
-                    JOptionPane.showMessageDialog(null,
-                            "No existen matches con ese código de juego.",
-                            "Aviso",
-                            JOptionPane.WARNING_MESSAGE);
-                }
-
-            } catch (SQLException e) {
-                conn.rollback(); // Si ocurre algún error durante la transacción, se revierte todo
-                JOptionPane.showMessageDialog(null,
-                        "Error al eliminar los matches:\n" + e.getMessage(),
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE);
-            } finally {
-                conn.setAutoCommit(true); // Restauramos autocommit para otras operaciones fuera de la transacción
-            }
-
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null,
-                    "Error de conexión a la base de datos:\n" + e.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-
 
 
     //-------------------------SELECT (BUSCAR)  eventos
@@ -218,18 +147,35 @@ public class Eventos {
     public void evtTablaPlayers(java.awt.event.ActionEvent evt) {
         try {
             String sql = """
-            SELECT player_id, first_name, last_name, gender, address, telephone_number, email, age
-            FROM public.players
-            ORDER BY player_id;
-            """;
+    SELECT
+        player_id AS "player_id:ID",
+        first_name AS "first_name:Nombre",
+        last_name AS "last_name:Apellido",
+        
+        CASE gender
+            WHEN 'M' THEN 'Masculino'
+            WHEN 'F' THEN 'Femenino'
+            ELSE 'Otro'
+        END AS "gender:Género",
+
+        address AS "address:Dirección",
+        telephone_number AS "telephone_number:Teléfono",
+        email AS "email:Correo",
+        age AS "age:Edad"
+    FROM public.players
+    ORDER BY player_id;
+    """;
+
+
+
 
             ResultSet rs = db.query(sql);
             JDBCTableAdapter modelo = new JDBCTableAdapter(rs);
 
             // Usa el listener genérico, indicando la tabla y su clave primaria
-            modelo.addTableModelListener(new GenericTableListener(db, "players", "player_id"));
 
-            TablaSelects browser = new TablaSelects("Jugadores", modelo);
+
+            TablaSelects browser = new TablaSelects("Jugadores", modelo, "players", this);
             browser.setVisible(true);
             this.desktopPane.add(browser);
 
@@ -241,27 +187,27 @@ public class Eventos {
     public void evtTablaRankings(java.awt.event.ActionEvent evt) {
         try {
             String sql = """
-                    SELECT
-                        pgr.player_id,
-                        pl.first_name || ' ' || pl.last_name AS player_name,
-                        g.game_name,
-                        pgr.ranking
-                    FROM public.players_game_ranking AS pgr
-                    JOIN public.players AS pl
-                        ON pgr.player_id = pl.player_id
-                    JOIN public.games AS g
-                        ON pgr.game_code = g.game_code
-                    ORDER BY pgr.player_id;
-                    
-                    """;
+    SELECT
+        pgr.player_id            AS "ID Jugador",
+        pl.first_name || ' ' || pl.last_name AS "Nombre del Jugador",
+        g.game_name              AS "Nombre del Juego",
+        pgr.ranking              AS "Ranking"
+    FROM public.players_game_ranking AS pgr
+    JOIN public.players AS pl
+        ON pgr.player_id = pl.player_id
+    JOIN public.games AS g
+        ON pgr.game_code = g.game_code
+    ORDER BY pgr.player_id;
+    """;
 
             ResultSet rs = db.query(sql);
             JDBCTableAdapter modelo = new JDBCTableAdapter(rs);
 
             // Usa el listener genérico, indicando la tabla y su clave primaria
-            modelo.addTableModelListener(new GenericTableListener(db, "players_game_ranking", "player_id"));
 
-            TablaSelects browser = new TablaSelects("Rankings", modelo);
+
+            TablaSelects browser = new TablaSelects("Rankings", modelo, "rankings", this);
+
             browser.setVisible(true);
             this.desktopPane.add(browser);
 
@@ -272,16 +218,25 @@ public class Eventos {
     public void evtSelectgames(java.awt.event.ActionEvent evt) {
         try {
             String sql = """
-                    SELECT game_code, game_name, game_description, platform, category
-                                            	FROM public.games order by game_code;""";
+    SELECT
+        game_code        AS "Código del Juego",
+        game_name        AS "Nombre del Juego",
+        game_description AS "Descripción",
+        platform         AS "Plataforma",
+        category         AS "Categoría"
+    FROM public.games
+    ORDER BY game_code;
+    """;
+
 
             ResultSet rs = db.query(sql);
             JDBCTableAdapter modelo = new JDBCTableAdapter(rs);
 
             // Usa el listener genérico, indicando la tabla y su clave primaria
-            modelo.addTableModelListener(new GenericTableListener(db, "games", "game_code"));
 
-            TablaSelects browser = new TablaSelects("Juegos", modelo);
+
+            TablaSelects browser = new TablaSelects("Juegos", modelo, "games", this);
+
             browser.setVisible(true);
             this.desktopPane.add(browser);
 
@@ -292,16 +247,25 @@ public class Eventos {
     public void evtSelectLeagues(java.awt.event.ActionEvent evt) {
         try {
             String sql = """
-                    SELECT league_id, league_name, rank, category, league_duration
-                                                               	FROM public.leagues order by league_id;""";
+    SELECT
+        league_id       AS "ID Liga",
+        league_name     AS "Nombre de la Liga",
+        rank            AS "Rango",
+        category        AS "Categoría",
+        league_duration AS "Duración de la Liga"
+    FROM public.leagues
+    ORDER BY league_id;
+    """;
+
 
             ResultSet rs = db.query(sql);
             JDBCTableAdapter modelo = new JDBCTableAdapter(rs);
 
             // Usa el listener genérico, indicando la tabla y su clave primaria
-            modelo.addTableModelListener(new GenericTableListener(db, "leagues", "league_id"));
 
-            TablaSelects browser = new TablaSelects("Ligas", modelo);
+
+            TablaSelects browser = new TablaSelects("Ligas", modelo, "leagues", this);
+
             browser.setVisible(true);
             this.desktopPane.add(browser);
 
@@ -312,26 +276,27 @@ public class Eventos {
     public void evtSelectLeaguesgames(java.awt.event.ActionEvent evt) {
         try {
             String sql = """
-                    SELECT\s
-                     lg.league_id,
-                     l.league_name,
-                     lg.game_code,
-                     g.game_name
-                     FROM public.leagues_game AS lg
-                     JOIN public.leagues AS l
-                     ON lg.league_id = l.league_id
-                     JOIN public.games AS g
-                     ON lg.game_code = g.game_code
-                     ORDER BY lg.league_id;
-                    """;
+    SELECT
+        lg.league_id   AS "ID Liga",
+        l.league_name  AS "Nombre de la Liga",
+        lg.game_code   AS "Código del Juego",
+        g.game_name    AS "Nombre del Juego"
+    FROM public.leagues_game AS lg
+    JOIN public.leagues AS l
+        ON lg.league_id = l.league_id
+    JOIN public.games AS g
+        ON lg.game_code = g.game_code
+    ORDER BY lg.league_id;
+    """;
 
             ResultSet rs = db.query(sql);
             JDBCTableAdapter modelo = new JDBCTableAdapter(rs);
 
             // Usa el listener genérico, indicando la tabla y su clave primaria
-            modelo.addTableModelListener(new GenericTableListener(db, "leagues_game", "league_id"));
 
-            TablaSelects browser = new TablaSelects("Ligas de Juegos", modelo);
+
+            TablaSelects browser = new TablaSelects("Ligas de Juegos", modelo, "leagues_games", this);
+
             browser.setVisible(true);
             this.desktopPane.add(browser);
 
@@ -342,16 +307,31 @@ public class Eventos {
     public void evtSelectTeams(java.awt.event.ActionEvent evt) {
         try {
             String sql = """
-                    SELECT team_id, team_name, date_created, date_disbanded, number_members, users_name, wins, ties, defeats, created_by_player_id
-                    	FROM public.teams order by team_id;""";
+    SELECT
+        team_id              AS "ID Equipo",
+        team_name            AS "Nombre del Equipo",
+        date_created         AS "Fecha de Creación",
+        date_disbanded       AS "Fecha de Disolución",
+        number_members       AS "Número de Miembros",
+        users_name           AS "Nombre del Usuario",
+        wins                 AS "Victorias",
+        ties                 AS "Empates",
+        defeats              AS "Derrotas",
+        created_by_player_id AS "ID Jugador Creador"
+    FROM public.teams
+    ORDER BY team_id;
+    """;
+
 
             ResultSet rs = db.query(sql);
             JDBCTableAdapter modelo = new JDBCTableAdapter(rs);
 
             // Usa el listener genérico, indicando la tabla y su clave primaria
-            modelo.addTableModelListener(new GenericTableListener(db, "teams", "team_id"));
 
-            TablaSelects browser = new TablaSelects("Equipos", modelo);
+
+            TablaSelects browser = new TablaSelects("Equipos", modelo, "teams", this);
+
+
             browser.setVisible(true);
             this.desktopPane.add(browser);
 
@@ -362,28 +342,30 @@ public class Eventos {
     public void evtSelectTeamsPlayers(java.awt.event.ActionEvent evt) {
         try {
             String sql = """
-                    SELECT\s
-                        tp.team_id,
-                        t.team_name,
-                        tp.player_id,
-                        pl.first_name || ' ' || pl.last_name AS player_name,
-                        tp.date_from,
-                        tp.date_to
-                    FROM public.team_players AS tp
-                    JOIN public.teams AS t
-                        ON tp.team_id = t.team_id
-                    JOIN public.players AS pl
-                        ON tp.player_id = pl.player_id
-                    ORDER BY tp.team_id;
-                    """;
+    SELECT
+        tp.team_id                                   AS "ID Equipo",
+        t.team_name                                  AS "Nombre del Equipo",
+        tp.player_id                                 AS "ID Jugador",
+        pl.first_name || ' ' || pl.last_name         AS "Nombre del Jugador",
+        tp.date_from                                 AS "Fecha de Ingreso",
+        tp.date_to                                   AS "Fecha de Salida"
+    FROM public.team_players AS tp
+    JOIN public.teams AS t
+        ON tp.team_id = t.team_id
+    JOIN public.players AS pl
+        ON tp.player_id = pl.player_id
+    ORDER BY tp.team_id;
+    """;
+
 
             ResultSet rs = db.query(sql);
             JDBCTableAdapter modelo = new JDBCTableAdapter(rs);
 
             // Usa el listener genérico, indicando la tabla y su clave primaria
-            modelo.addTableModelListener(new GenericTableListener(db, "teams_players", "team_id"));
 
-            TablaSelects browser = new TablaSelects("Jugadores del Equipo", modelo);
+
+            TablaSelects browser = new TablaSelects("Jugadores del Equipo", modelo, "teams_players", this);
+
             browser.setVisible(true);
             this.desktopPane.add(browser);
 
@@ -451,56 +433,38 @@ public class Eventos {
 
     //-------------------------DELETE------------------------------------
 
-    // Método para eliminar jugadores
-    public void evtEliminarPlayers(java.awt.event.ActionEvent evt) {
+    // Métoo para eliminar jugadores
+    public void evtEliminarPlayers(Object id) {
 
-        // Mostrar un cuadro de diálogo para que el usuario ingrese el ID del jugador a eliminar
-        String input = JOptionPane.showInputDialog(null,
-                "Ingresa el ID del jugador que deseas eliminar:",
-                "Eliminar jugador",
-                JOptionPane.QUESTION_MESSAGE);
-
-        // Si el usuario presiona "Cancelar", input será null y se sale del método
-        if (input == null) {
-            return;
-        }
-
-        // Convertir el input a un número entero, validando que sea un número válido
+        // Convertir el id a entero
         int playerId;
         try {
-            playerId = Integer.parseInt(input);
+            playerId = Integer.parseInt(id.toString());
         } catch (NumberFormatException e) {
-            // Si no es un número, mostrar mensaje de error y salir
             JOptionPane.showMessageDialog(null,
-                    "El ID debe ser un número entero.",
+                    "El ID debe ser un número entero válido.",
                     "Error",
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        // Crear instancia de la clase Database para manejar la conexión
         Database db = new Database();
 
-        try (Connection conn = db.getConnection()) { // Abrir conexión a la base de datos
+        try (Connection conn = db.getConnection()) {
 
-            // Preparar la sentencia SQL DELETE con un parámetro (?)
             PreparedStatement stmt = conn.prepareStatement(
                     "DELETE FROM players WHERE player_id = ?"
             );
-            stmt.setInt(1, playerId); // Asignar el valor del ID al parámetro
+            stmt.setInt(1, playerId);
 
-            // Ejecutar la eliminación y obtener el número de filas afectadas
             int rows = stmt.executeUpdate();
 
             if (rows > 0) {
-                // Si se eliminó algún  registro, mostrar mensaje de éxito
                 JOptionPane.showMessageDialog(null,
-                        "Jugador eliminado correctamente.\n" +
-                                "Los registros relacionados también fueron eliminados automáticamente.",
+                        "Jugador eliminado correctamente.",
                         "Éxito",
                         JOptionPane.INFORMATION_MESSAGE);
             } else {
-                // Si no se encontró ningún registro con ese ID, mostrar advertencia
                 JOptionPane.showMessageDialog(null,
                         "No existe un jugador con ese ID.",
                         "Aviso",
@@ -508,7 +472,6 @@ public class Eventos {
             }
 
         } catch (SQLException e) {
-            // Capturar errores de SQL y mostrarlos en un mensaje
             JOptionPane.showMessageDialog(null,
                     "Error al eliminar jugador:\n" + e.getMessage(),
                     "Error",
@@ -516,7 +479,8 @@ public class Eventos {
         }
     }
 
-    // Método para eliminar rankings
+
+    // Métdo para eliminar rankings
     public void evtEliminarRankings(java.awt.event.ActionEvent evt) {
 
         // Solicitar al usuario el ID del ranking a eliminar
@@ -571,7 +535,7 @@ public class Eventos {
         }
     }
 
-    // Método para eliminar juegos
+    // Métdo para eliminar juegos
     public void evtEliminargames(java.awt.event.ActionEvent evt) {
 
         // Solicitar ID del juego a eliminar
@@ -626,7 +590,7 @@ public class Eventos {
         }
     }
 
-    // Método para eliminar ligas
+    // Métdo para eliminar ligas
     public void evtEliminarLeagues(java.awt.event.ActionEvent evt) {
 
         String input = JOptionPane.showInputDialog(null,
@@ -680,7 +644,7 @@ public class Eventos {
         }
     }
 
-    // Método para eliminar registros de liga-juego
+    // Métdo para eliminar registros de liga-juego
     public void evtEliminarLeaguesgames(java.awt.event.ActionEvent evt) {
 
         String input = JOptionPane.showInputDialog(null,
@@ -732,7 +696,7 @@ public class Eventos {
         }
     }
 
-    // Método para eliminar registros de equipo-jugador
+    // Métdo para eliminar registros de equipo-jugador
     public void evtEliminarTeamsPlayers(java.awt.event.ActionEvent evt) {
 
         String input = JOptionPane.showInputDialog(null,
@@ -784,7 +748,7 @@ public class Eventos {
         }
     }
 
-    // Método para eliminar equipos
+    // Métoo para eliminar equipos
     public void evtEliminarTeams(java.awt.event.ActionEvent evt) {
 
         String input = JOptionPane.showInputDialog(null,
@@ -836,4 +800,36 @@ public class Eventos {
                     JOptionPane.ERROR_MESSAGE);
         }
     }
+    public void evtUpdateMatches(Object id) {
+        new FrmUpdateMatches(null, db, id);
+    }
+
+    public void evtUpdatePlayers(Object id) {
+       // new FrmUpdatePlayers(null, db, id);
+    }
+
+    public void evtUpdateRankings(Object id) {
+       // new FrmUpdateRankings(null, db, id);
+    }
+
+    public void evtUpdateGames(Object id) {
+        //new FrmUpdateGames(null, db, id);
+    }
+
+    public void evtUpdateLeagues(Object id) {
+       // new FrmUpdateLeagues(null, db, id);
+    }
+
+    public void evtUpdateLeaguesGames(Object id) {
+      //  new FrmUpdateLeaguesGames(null, db, id);
+    }
+
+    public void evtUpdateTeams(Object id) {
+        //new FrmUpdateTeams(null, db, id);
+    }
+
+    public void evtUpdateTeamsPlayers(Object id) {
+       // new FrmUpdateTeamsPlayers(null, db, id);
+    }
+
 }
