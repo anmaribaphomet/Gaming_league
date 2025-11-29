@@ -109,38 +109,47 @@ public class FrmUpdateMatches extends JDialog {
         int capA     = Integer.parseInt(cbCapitanA.getSelectedItem().toString().split(" - ")[0]);
         int capB     = Integer.parseInt(cbCapitanB.getSelectedItem().toString().split(" - ")[0]);
 
-        String fecha = txtFecha.getText();
+        String fecha = txtFecha.getText(); // debe venir como YYYY-MM-DD
         String resultado = txtResultado.getText();
         String resultado2 = txtResultadoteams.getText();
 
-
-        String sql = String.format("""
-    UPDATE public.matches
-    SET game_code = %d,
-        player_1_id = %d,
-        player_2_id = %d,
-        match_date = '%s',
-        result_match = '%s',
-        result_teams = '%s'
-    WHERE match_id = %d
-    """,
-                gameCode,
-                capA,
-                capB,
-                fecha,
-                resultado,
-                resultado2,
-                matchID
-        );
-
-
+        String sql = """
+        UPDATE public.matches
+        SET game_code = ?,
+            player_1_id = ?,
+            player_2_id = ?,
+            match_date = ?,
+            result_match = ?,
+            result_teams = ?
+        WHERE match_id = ?
+    """;
 
         try {
-            db.update(sql);
+            var conn = db.getConnection();
+            var ps = conn.prepareStatement(sql);
+
+            ps.setInt(1, gameCode);
+            ps.setInt(2, capA);
+            ps.setInt(3, capB);
+
+            // convertir el String a java.sql.Date
+            java.sql.Date fechaSQL = java.sql.Date.valueOf(fecha);
+            ps.setDate(4, fechaSQL);
+
+            ps.setString(5, resultado);
+            ps.setString(6, resultado2);
+            ps.setInt(7, Integer.parseInt(matchID.toString()));
+
+            ps.executeUpdate();
+
             JOptionPane.showMessageDialog(this, "Actualizado correctamente");
             dispose();
+
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+            e.printStackTrace();
         }
     }
+
+
 }
