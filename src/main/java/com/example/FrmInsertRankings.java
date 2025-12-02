@@ -1,22 +1,21 @@
 package com.example;
-
 import javax.swing.*;
 import java.awt.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-public class FrmUpdateRankings extends JDialog {
+public class FrmInsertRankings extends JDialog {
 
     private JComboBox<String> cbNomJugador;
     private JComboBox<String> cbJuego;
     private JTextField txtRanking;
 
     private Database db;
-    private Object rankingID;
 
-    public FrmUpdateRankings(Frame parent, Database db, Object id) {
-        super(parent, "Actualizar Ranking", true);
+    public FrmInsertRankings(Frame parent, Database db) {
+        super(parent, "Insertar Ranking", true);
         this.db = db;
-        this.rankingID = id;
 
         JPanel panel = EstiloForm.estiloPanel();
 
@@ -26,18 +25,21 @@ public class FrmUpdateRankings extends JDialog {
 
         panel.add(new JLabel("Nombre del Jugador:"));
         panel.add(cbNomJugador);
+
         panel.add(new JLabel("Nombre del Juego:"));
         panel.add(cbJuego);
+
         panel.add(new JLabel("Ranking:"));
         panel.add(txtRanking);
 
-        JButton btnActualizar = EstiloForm.crearBoton("Actualizar");
-        btnActualizar.addActionListener(evt -> actualizar());
+        JButton btnInsertar = EstiloForm.crearBoton("Insertar");
+        btnInsertar.addActionListener(e -> insertar());
         panel.add(new JLabel()); // celda vacía para centrar
-        panel.add(EstiloForm.centrar(btnActualizar));
+        panel.add(EstiloForm.centrar(btnInsertar));
+
 
         cargarCombos();
-        cargarDatos();
+
         add(panel);
         pack();
         setLocationRelativeTo(parent);
@@ -63,67 +65,45 @@ public class FrmUpdateRankings extends JDialog {
         }
     }
 
-    private void cargarDatos() {
-        try {
-            ResultSet rs = db.query(
-                    "SELECT player_id, game_code, ranking " +
-                            "FROM public.players_game_ranking WHERE player_id = " + rankingID
-            );
-
-            if (rs.next()) {
-                int playerId = rs.getInt("player_id");
-                int gameCode = rs.getInt("game_code");
-                int ranking  = rs.getInt("ranking");
-
-                seleccionarPorID(cbNomJugador, playerId);
-                seleccionarPorID(cbJuego, gameCode);
-
-                txtRanking.setText(String.valueOf(ranking));
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void seleccionarPorID(JComboBox<String> combo, int id) {
-        for (int i = 0; i < combo.getItemCount(); i++) {
-            String item = combo.getItemAt(i);
-            if (item.startsWith(id + " -")) {
-                combo.setSelectedIndex(i);
-                break;
-            }
-        }
-    }
-
-    private void actualizar() {
+    private void insertar() {
 
         int playerId = Integer.parseInt(cbNomJugador.getSelectedItem().toString().split(" - ")[0]);
         int gameCode = Integer.parseInt(cbJuego.getSelectedItem().toString().split(" - ")[0]);
         int ranking = Integer.parseInt(txtRanking.getText());
 
         String sql = """
-            UPDATE public.players_game_ranking
-            SET game_code = ?, ranking = ?
-            WHERE player_id = ?
+            INSERT INTO public.players_game_ranking
+            (player_id, game_code, ranking)
+            VALUES (?, ?, ?)
         """;
 
-        try {
-            var conn = db.getConnection();
-            var ps = conn.prepareStatement(sql);
+        Connection conn = null;
 
-            ps.setInt(1, gameCode);
-            ps.setInt(2, ranking);
-            ps.setInt(3, playerId);
+        try {
+            conn = db.getConnection();
+            conn.setAutoCommit(false);
+
+            PreparedStatement ps = conn.prepareStatement(sql);
+
+            ps.setInt(1, playerId);
+            ps.setInt(2, gameCode);
+            ps.setInt(3, ranking);
 
             ps.executeUpdate();
+            conn.commit();
 
-            JOptionPane.showMessageDialog(this, "Actualizado correctamente");
+            JOptionPane.showMessageDialog(this, "Insertado correctamente");
             dispose();
 
         } catch (Exception e) {
+
+            try { if (conn != null) conn.rollback(); } catch (Exception ignored) {}
+
             JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
             e.printStackTrace();
+
+        } finally {
+            try { if (conn != null) conn.setAutoCommit(true); } catch (Exception ignored) {}
         }
     }
 }

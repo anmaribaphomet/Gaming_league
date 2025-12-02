@@ -4,9 +4,9 @@ import javax.swing.*;
 import java.awt.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 
-public class FrmUpdatePlayers extends JDialog {
+
+public class FrmInsertPlayers extends JDialog {
 
     private JTextField txtNombre;
     private JTextField txtApellido;
@@ -17,10 +17,9 @@ public class FrmUpdatePlayers extends JDialog {
     private Database db;
     private Object playerID;
 
-    public FrmUpdatePlayers(Frame parent, Database db, Object id) {
-        super(parent, "Actualizar Player", true);
+    public FrmInsertPlayers(Frame parent, Database db) {
+        super(parent, "Insertar Player", true);
         this.db = db;
-        this.playerID = id;
 
         JPanel panel = EstiloForm.estiloPanel();
 
@@ -49,14 +48,13 @@ public class FrmUpdatePlayers extends JDialog {
         panel.add(txtEdad);
 
 
-        JButton btnActualizar = EstiloForm.crearBoton("Actualizar");
-        btnActualizar.addActionListener(e -> actualizar());
+        JButton btnInsertar = EstiloForm.crearBoton("Insertar");
+        btnInsertar.addActionListener(e -> insertar());
         panel.add(new JLabel()); // celda vacía para centrar
-        panel.add(EstiloForm.centrar(btnActualizar));
+        panel.add(EstiloForm.centrar(btnInsertar));
+
 
         cargarCombos();
-        cargarDatos();
-
         add(panel);
         pack();
         setLocationRelativeTo(parent);
@@ -69,30 +67,7 @@ public class FrmUpdatePlayers extends JDialog {
         cbGenero.addItem("Otro");
     }
 
-
-    private void cargarDatos() {
-        try {
-            ResultSet rs = db.query(
-                    "SELECT player_id, first_name, last_name, gender, address, telephone_number, email, age " +
-                            "FROM public.players WHERE player_id = " + playerID);
-
-            if (rs.next()) {
-
-                txtNombre.setText(rs.getString("first_name"));
-                txtApellido.setText(rs.getString("last_name"));
-                cbGenero.setSelectedItem(rs.getString("gender"));
-                txtDireccion.setText(rs.getString("address"));
-                txtTelefono.setText(rs.getString("telephone_number"));
-                txtCorreo.setText(rs.getString("email"));
-                txtEdad.setText(rs.getString("age"));
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void actualizar() {
+    private void insertar() {
 
         String firstName = txtNombre.getText();
         String lastName = txtApellido.getText();
@@ -103,19 +78,18 @@ public class FrmUpdatePlayers extends JDialog {
         int age = Integer.parseInt(txtEdad.getText());
 
         String sql = """
-            UPDATE public.players SET
-                first_name = ?,
-                last_name = ?,
-                gender = ?,
-                address = ?,
-                telephone_number = ?,
-                email = ?,
-                age = ?
-            WHERE player_id = ?
-        """;
+        INSERT INTO public.players 
+            (first_name, last_name, gender, address, telephone_number, email, age)
+        VALUES ( ?, ?, ?, ?, ? , ? , ?)
+    """;
 
-        try (Connection conn = db.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        Connection conn = null;
+
+        try {
+            conn = db.getConnection();
+            conn.setAutoCommit(false); // INICIA TRANSACCIÓN
+
+            PreparedStatement ps = conn.prepareStatement(sql);
 
             ps.setString(1, firstName);
             ps.setString(2, lastName);
@@ -124,16 +98,32 @@ public class FrmUpdatePlayers extends JDialog {
             ps.setString(5, phone);
             ps.setString(6, email);
             ps.setInt(7, age);
-            ps.setInt(8, Integer.parseInt(playerID.toString()));
 
             ps.executeUpdate();
 
-            JOptionPane.showMessageDialog(this, "Jugador actualizado correctamente");
+            conn.commit();
+
+            JOptionPane.showMessageDialog(this, "Insertado correctamente");
             dispose();
 
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Error al actualizar: " + e.getMessage());
+
+            try {
+                if (conn != null) conn.rollback();
+            } catch (Exception ex2) {
+                ex2.printStackTrace();
+            }
+
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
             e.printStackTrace();
+
+        } finally {
+            try {
+                if (conn != null) conn.setAutoCommit(true);
+            } catch (Exception ex3) {
+                ex3.printStackTrace();
+            }
         }
     }
 }
+

@@ -66,7 +66,14 @@ public class Eventos {
 
     //Insertar con transacciones
     public void evtInsertMatches(java.awt.event.ActionEvent evt) {
-        //TODO
+        try {
+            FrmInsertMatches frm = new FrmInsertMatches(null, db);
+            frm.setVisible(true);
+
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
+
     }
 
 
@@ -376,59 +383,64 @@ public class Eventos {
 
     //-------------------------INSERT eventos
     public void evtInsertPlayers(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"Nombre", "Apellido", "Género", "Dirección", "Teléfono", "Email", "Edad (Número)"};
-        String sql = "INSERT INTO public.players (first_name, last_name, gender, address, telephone_number, email, age) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try {
+            FrmInsertPlayers frm = new FrmInsertPlayers(null, db );
 
-        // Llamamos a la nueva clase estática
-        TableInsert.mostrar(this.db, "Nuevo Jugador", labels, sql, new int[]{6});
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
     }
 
     public void evtInsertRankings(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"ID Jugador (Número)", "Código Juego", "Ranking (Núm)"};
-        String sql = "INSERT INTO public.players_game_ranking (player_id, game_code, ranking) VALUES (?, ?, ?)";
+        try {
+            FrmInsertRankings frm = new FrmInsertRankings(null, db );
 
-        TableInsert.mostrar(this.db, "Nuevo Ranking", labels, sql, new int[]{0, 2});
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
 
     }
     public void evtInsertgames(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"Código Juego", "Nombre", "Descripción", "Plataforma", "Categoría"};
-        String sql = "INSERT INTO public.games (game_code, game_name, game_description, platform, category) VALUES (?, ?, ?, ?, ?)";
+        try {
+            FrmInsertGames frm = new FrmInsertGames(null, db );
 
-        TableInsert.mostrar(this.db, "Nuevo Juego", labels, sql, null);
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
 
     }
     public void evtInsertLeagues(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"Nombre Liga", "Rango", "Categoría", "Duración"};
-        String sql = "INSERT INTO public.leagues (league_name, rank, category, league_duration) VALUES (?, ?, ?, ?)";
+        try {
+            FrmInsertLeagues frm = new FrmInsertLeagues(null, db );
 
-        TableInsert.mostrar(this.db, "Nueva Liga", labels, sql, null);
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
     }
     public void evtInsertLeaguesgames(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"ID Liga (Número)", "Código Juego"};
-        String sql = "INSERT INTO public.leagues_game (league_id, game_code) VALUES (?, ?)";
+        try {
+            FrmInsertLeaguesGames frm = new FrmInsertLeaguesGames(null, db );
 
-        TableInsert.mostrar(this.db, "Asignar Juego a Liga", labels, sql, new int[]{0});
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
     }
     public void evtInsertTeamsPlayers(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"Nombre Equipo", "ID Capitán (Número)"};
-        String sql = "INSERT INTO public.teams (team_name, created_by_player_id, date_created) VALUES (?, ?, CURRENT_DATE)";
+        try {
+            FrmInsertTeamsPlayers frm = new FrmInsertTeamsPlayers(null, db );
 
-        TableInsert.mostrar(this.db, "Nuevo Equipo", labels, sql, new int[]{1});
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
 
     }
     public void evtInsertTeams(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"ID Equipo (Número)", "ID Jugador (Número)", "Fecha Inicio (YYYY-MM-DD)"};
-        String sql = "INSERT INTO public.team_players (team_id, player_id, date_from) VALUES (?, ?, ?::date)";
+        try {
+            FrmInsertTeams frm = new FrmInsertTeams(null, db );
 
-        TableInsert.mostrar(this.db, "Agregar Jugador a Equipo", labels, sql, new int[]{0, 1});
-
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
     }
 
     //-------------------------DELETE------------------------------------
@@ -805,19 +817,19 @@ public class Eventos {
     }
 
     public void evtUpdatePlayers(Object id) {
-       // new FrmUpdatePlayers(null, db, id);
+       new FrmUpdatePlayers(null, db, id);
     }
 
     public void evtUpdateRankings(Object id) {
-       // new FrmUpdateRankings(null, db, id);
+       new FrmUpdateRankings(null, db, id);
     }
 
     public void evtUpdateGames(Object id) {
-        //new FrmUpdateGames(null, db, id);
+        new FrmUpdateGames(null, db, id);
     }
 
     public void evtUpdateLeagues(Object id) {
-       // new FrmUpdateLeagues(null, db, id);
+       new FrmUpdateLeagues(null, db, id);
     }
 
     public void evtUpdateLeaguesGames(Object id) {

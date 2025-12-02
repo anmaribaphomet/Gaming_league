@@ -2,10 +2,11 @@ package com.example;
 
 import javax.swing.*;
 import java.awt.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-public class FrmUpdateGames extends JDialog {
-
+public class FrmInsertGames extends JDialog {
     private JTextField txtNomGame;
     private JTextField txtDescripcion;
     private JComboBox<String> cbPlataforma;
@@ -13,12 +14,11 @@ public class FrmUpdateGames extends JDialog {
 
 
     private Database db;
-    private Object gameID;
 
-    public FrmUpdateGames(Frame parent, Database db, Object id) {
-        super(parent, "Actualizar Juego", true);
+
+    public FrmInsertGames(Frame parent, Database db) {
+        super(parent, "Insertar Juegos", true);
         this.db = db;
-        this.gameID = id;
 
         JPanel panel = EstiloForm.estiloPanel();
 
@@ -37,14 +37,12 @@ public class FrmUpdateGames extends JDialog {
         panel.add(new JLabel("Categoria:"));
         panel.add(cbCategoria);
 
-
-        JButton btnActualizar = EstiloForm.crearBoton("Actualizar");
-        btnActualizar.addActionListener(evt -> actualizar());
+        JButton btnInsertar = EstiloForm.crearBoton("Insertar");
+        btnInsertar.addActionListener(evt -> insertar());
         panel.add(new JLabel()); // celda vacía para centrar
-        panel.add(EstiloForm.centrar(btnActualizar));
+        panel.add(EstiloForm.centrar(btnInsertar));
 
         cargarCombos();
-        cargarDatos();
         add(panel);
         pack();
         setLocationRelativeTo(parent);
@@ -71,29 +69,7 @@ public class FrmUpdateGames extends JDialog {
         }
     }
 
-
-
-    private void cargarDatos() {
-        try {
-            ResultSet rs = db.query(
-                    "SELECT game_code, game_name, game_description, platform, category " +
-                            "FROM public.games WHERE game_code = " + gameID
-            );
-
-            if (rs.next()) {
-                txtNomGame.setText(rs.getString("game_name"));
-                txtDescripcion.setText(rs.getString("game_description"));
-
-                cbPlataforma.setSelectedItem(rs.getString("platform"));
-                cbCategoria.setSelectedItem(rs.getString("category"));
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void actualizar() {
+    private void insertar() {
 
         String nombreJuego = txtNomGame.getText();
         String descJuego = txtDescripcion.getText();
@@ -101,34 +77,47 @@ public class FrmUpdateGames extends JDialog {
         String categoria = cbCategoria.getSelectedItem().toString();
 
         String sql = """
-            UPDATE public.games
-            SET game_name = ?,
-                game_description = ?,
-                platform = ?,
-                category = ?
-            WHERE game_code = ?
-        """;
+        INSERT INTO public.games 
+            (game_name, game_description, platform, category)
+        VALUES ( ?, ?, ?, ?)
+    """;
+
+        Connection conn = null;
 
         try {
-            var conn = db.getConnection();
-            var ps = conn.prepareStatement(sql);
+            conn = db.getConnection();
+            conn.setAutoCommit(false); // INICIA TRANSACCIÓN
+
+            PreparedStatement ps = conn.prepareStatement(sql);
 
             ps.setString(1, nombreJuego);
             ps.setString(2, descJuego);
             ps.setString(3, plataforma);
             ps.setString(4, categoria);
-            ps.setInt(5, Integer.parseInt(gameID.toString()));
-
             ps.executeUpdate();
 
-            JOptionPane.showMessageDialog(this, "Actualizado correctamente");
+            conn.commit();
+
+            JOptionPane.showMessageDialog(this, "Insertado correctamente");
             dispose();
 
         } catch (Exception e) {
+
+            try {
+                if (conn != null) conn.rollback();
+            } catch (Exception ex2) {
+                ex2.printStackTrace();
+            }
+
             JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
             e.printStackTrace();
+
+        } finally {
+            try {
+                if (conn != null) conn.setAutoCommit(true);
+            } catch (Exception ex3) {
+                ex3.printStackTrace();
+            }
         }
     }
-
 }
-
