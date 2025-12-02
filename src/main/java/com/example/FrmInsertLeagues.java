@@ -12,7 +12,7 @@ public class FrmInsertLeagues extends JDialog {
     private JComboBox<String> cbCategoria;
     private JTextField txtDuracionLiga;
 
-
+    private Runnable onSuccess;
     private Database db;
     private Object leagueID;
 
@@ -48,7 +48,11 @@ public class FrmInsertLeagues extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
+
+    }
+
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
     }
 
     private void cargarCombos() {
@@ -102,6 +106,9 @@ public class FrmInsertLeagues extends JDialog {
             conn.commit();
 
             JOptionPane.showMessageDialog(this, "Insertado correctamente");
+            if(onSuccess != null){
+                onSuccess.run();
+            }
             dispose();
 
         } catch (Exception e) {

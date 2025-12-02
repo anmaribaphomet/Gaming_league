@@ -11,7 +11,7 @@ public class FrmUpdateGames extends JDialog {
     private JComboBox<String> cbPlataforma;
     private JComboBox<String> cbCategoria;
 
-
+    private Runnable onSuccess;
     private Database db;
     private Object gameID;
 
@@ -48,9 +48,11 @@ public class FrmUpdateGames extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
     }
 
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
+    }
     private void cargarCombos() {
         try {
 
@@ -122,6 +124,7 @@ public class FrmUpdateGames extends JDialog {
             ps.executeUpdate();
 
             JOptionPane.showMessageDialog(this, "Actualizado correctamente");
+            if (onSuccess != null) onSuccess.run();
             dispose();
 
         } catch (Exception e) {

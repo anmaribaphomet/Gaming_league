@@ -1,6 +1,7 @@
 package com.example;
 
 import javax.swing.*;
+import javax.swing.table.TableModel;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -26,11 +27,159 @@ public class Eventos {
         }
     }
 
-    //----------------------MATCHES-------------------
-    //Select
-    public void evtSelectMatches(java.awt.event.ActionEvent evt) {
-        try {
-            String sql = """
+
+    public TableModel obtenerModeloRefrescado(String command) {
+        String sql = switch (command) {
+            case "players" -> """
+            SELECT 
+                player_id AS "ID",
+                first_name AS "Nombre",
+                last_name AS "Apellido",
+                CASE gender
+                    WHEN 'M' THEN 'Masculino'
+                    WHEN 'F' THEN 'Femenino'
+                    ELSE 'Otro'
+                END AS "Género",
+                address AS "Dirección",
+                telephone_number AS "Teléfono",
+                email AS "Correo",
+                age AS "Edad"
+            FROM public.players
+            ORDER BY player_id;
+        """;
+
+            case "matches" -> """
+            SELECT
+                m.match_id AS "ID de Partido",
+                g.game_name AS "Juego",
+                p1.first_name || ' ' || p1.last_name AS "Capitán A",
+                p2.first_name || ' ' || p2.last_name AS "Capitán B",
+                m.match_date AS "Fecha",
+                m.result_match AS "Resultado Encuentro",
+                m.result_teams AS "Resultado Equipos"
+            FROM public.matches m
+            JOIN public.games g ON m.game_code = g.game_code
+            JOIN public.players p1 ON m.player_1_id = p1.player_id
+            JOIN public.players p2 ON m.player_2_id = p2.player_id
+            ORDER BY m.match_id;
+            """;
+
+            case "games" -> """
+            SELECT
+                game_code AS "Código del Juego",
+                game_name AS "Nombre del Juego",
+                game_description AS "Descripción",
+                platform AS "Plataforma",
+                category AS "Categoría"
+            FROM public.games
+            ORDER BY game_code;
+            """;
+
+            case "teams" -> """
+            SELECT
+                team_id AS "ID Equipo",
+                team_name AS "Nombre del Equipo",
+                date_created AS "Fecha de Creación",
+                date_disbanded AS "Fecha de Disolución",
+                number_members AS "Número de Miembros",
+                users_name AS "Nombre del Usuario",
+                wins AS "Victorias",
+                ties AS "Empates",
+                defeats AS "Derrotas",
+                created_by_player_id AS "ID Jugador Creador"
+            FROM public.teams
+            ORDER BY team_id;
+            """;
+            case "rankings" -> """
+                    SELECT
+                            pgr.player_id            AS "ID Jugador",
+                            pl.first_name || ' ' || pl.last_name AS "Nombre del Jugador",
+                            g.game_name              AS "Nombre del Juego",
+                            pgr.ranking              AS "Ranking"
+                        FROM public.players_game_ranking AS pgr
+                        JOIN public.players AS pl
+                            ON pgr.player_id = pl.player_id
+                        JOIN public.games AS g
+                            ON pgr.game_code = g.game_code
+                        ORDER BY pgr.player_id;
+                        """;
+
+            case "leagues" ->
+                    """
+            SELECT
+                league_id       AS "ID Liga",
+                league_name     AS "Nombre de la Liga",
+                rank            AS "Rango",
+                category        AS "Categoría",
+                league_duration AS "Duración de la Liga"
+            FROM public.leagues
+            ORDER BY league_id;
+            """;
+
+            case "teams_players" ->
+                    """
+              SELECT
+                  tp.team_id                                   AS "ID Equipo",
+                  t.team_name                                  AS "Nombre del Equipo",
+                  tp.player_id                                 AS "ID Jugador",
+                  pl.first_name || ' ' || pl.last_name         AS "Nombre del Jugador",
+                  tp.date_from                                 AS "Fecha de Ingreso",
+                  tp.date_to                                   AS "Fecha de Salida"
+              FROM public.team_players AS tp
+              JOIN public.teams AS t
+                  ON tp.team_id = t.team_id
+              JOIN public.players AS pl
+                  ON tp.player_id = pl.player_id
+              ORDER BY tp.team_id;
+              """
+            ;
+
+            case "leagues_games" ->
+            """
+                 SELECT
+                    lg.league_id   AS "ID Liga",
+                    l.league_name  AS "Nombre de la Liga",
+                    lg.game_code   AS "Código del Juego",
+                    g.game_name    AS "Nombre del Juego"
+                FROM public.leagues_game AS lg
+                JOIN public.leagues AS l
+                    ON lg.league_id = l.league_id
+                JOIN public.games AS g
+                    ON lg.game_code = g.game_code
+                ORDER BY lg.league_id;
+            """;
+
+                    // Agrega aquí los demás casos de tu aplicación
+                    default -> throw new IllegalArgumentException("No hay SELECT para la tabla: " + command);
+                };
+
+                //Ejecutar consulta usando try-with-resources
+                try (ResultSet rs = db.query(sql)) {
+                    return new JDBCTableAdapter(rs);
+                } catch (SQLException e) {
+                    throw new RuntimeException("Error al refrescar modelo para " + command, e);
+                }
+            }
+
+
+            public TablaSelects buscarTablaAbierta(String command) {
+                for (JInternalFrame frame : desktopPane.getAllFrames()) {
+                    if (frame instanceof TablaSelects ts) {
+                        if (ts.getCurrentCommand().equals(command)) {
+                            return ts;
+                        }
+                    }
+                }
+                return null;
+            }
+
+
+
+                        //----------------------MATCHES-------------------
+                        //Select
+                        public void evtSelectMatches(java.awt.event.ActionEvent evt) {
+                            try {
+                                String sql = """
     SELECT
         m.match_id AS "match_id:ID de Partido",
         g.game_name AS "game_name:Juego",
@@ -68,7 +217,14 @@ public class Eventos {
     public void evtInsertMatches(java.awt.event.ActionEvent evt) {
         try {
             FrmInsertMatches frm = new FrmInsertMatches(null, db);
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("matches");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
             frm.setVisible(true);
+
 
         } catch (Exception ex) {
             LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
@@ -385,7 +541,13 @@ public class Eventos {
     public void evtInsertPlayers(java.awt.event.ActionEvent evt) {
         try {
             FrmInsertPlayers frm = new FrmInsertPlayers(null, db );
-
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("players");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
         } catch (Exception ex) {
             LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
         }
@@ -394,6 +556,13 @@ public class Eventos {
     public void evtInsertRankings(java.awt.event.ActionEvent evt) {
         try {
             FrmInsertRankings frm = new FrmInsertRankings(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("rankings");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
         } catch (Exception ex) {
             LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
@@ -403,6 +572,13 @@ public class Eventos {
     public void evtInsertgames(java.awt.event.ActionEvent evt) {
         try {
             FrmInsertGames frm = new FrmInsertGames(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("games");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
         } catch (Exception ex) {
             LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
@@ -412,6 +588,13 @@ public class Eventos {
     public void evtInsertLeagues(java.awt.event.ActionEvent evt) {
         try {
             FrmInsertLeagues frm = new FrmInsertLeagues(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("leagues");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
         } catch (Exception ex) {
             LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
@@ -420,6 +603,13 @@ public class Eventos {
     public void evtInsertLeaguesgames(java.awt.event.ActionEvent evt) {
         try {
             FrmInsertLeaguesGames frm = new FrmInsertLeaguesGames(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("leagues_games");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
         } catch (Exception ex) {
             LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
@@ -428,6 +618,13 @@ public class Eventos {
     public void evtInsertTeamsPlayers(java.awt.event.ActionEvent evt) {
         try {
             FrmInsertTeamsPlayers frm = new FrmInsertTeamsPlayers(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("teams_players");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
         } catch (Exception ex) {
             LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
@@ -437,6 +634,13 @@ public class Eventos {
     public void evtInsertTeams(java.awt.event.ActionEvent evt) {
         try {
             FrmInsertTeams frm = new FrmInsertTeams(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("teams");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
         } catch (Exception ex) {
             LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
@@ -813,23 +1017,59 @@ public class Eventos {
         }
     }
     public void evtUpdateMatches(Object id) {
-        new FrmUpdateMatches(null, db, id);
+        FrmUpdateMatches frm =  new FrmUpdateMatches(null, db, id);
+        frm.setOnSuccess(() -> {
+            TablaSelects browser = buscarTablaAbierta("matches");
+            if (browser != null) {
+                browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+            }
+        });
+        frm.setVisible(true);
+
     }
 
     public void evtUpdatePlayers(Object id) {
-       new FrmUpdatePlayers(null, db, id);
+            FrmUpdatePlayers frm = new FrmUpdatePlayers(null, db , id);
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("players");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
     }
 
     public void evtUpdateRankings(Object id) {
-       new FrmUpdateRankings(null, db, id);
+        FrmUpdateRankings frm = new FrmUpdateRankings(null, db, id);
+        frm.setOnSuccess(() -> {
+            // Busca la tabla abierta y recarga
+            TablaSelects browser = buscarTablaAbierta("rankings");
+            if (browser != null) browser.recargarTabla();
+        });
+        frm.setVisible(true);
     }
 
     public void evtUpdateGames(Object id) {
-        new FrmUpdateGames(null, db, id);
+        FrmUpdateGames frm = new FrmUpdateGames(null, db , id);
+        frm.setOnSuccess(() -> {
+            TablaSelects browser = buscarTablaAbierta("games");
+            if (browser != null) {
+                browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+            }
+        });
+        frm.setVisible(true);
     }
 
     public void evtUpdateLeagues(Object id) {
        new FrmUpdateLeagues(null, db, id);
+        FrmUpdateLeagues frm = new FrmUpdateLeagues(null, db , id);
+        frm.setOnSuccess(() -> {
+            TablaSelects browser = buscarTablaAbierta("leagues");
+            if (browser != null) {
+                browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+            }
+        });
+        frm.setVisible(true);
     }
 
     public void evtUpdateLeaguesGames(Object id) {

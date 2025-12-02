@@ -13,7 +13,7 @@ public class FrmInsertMatches extends JDialog {
     private JComboBox<String> cbCapitanB;
     private JTextField txtFecha;
     private JTextField txtResultado, txtResultadoTeams;
-
+    private Runnable onSuccess;
     private Database db;
 
     public FrmInsertMatches(Frame parent, Database db) {
@@ -51,6 +51,9 @@ public class FrmInsertMatches extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
+    }
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
     }
 
     private void cargarCombos() {
@@ -111,6 +114,9 @@ public class FrmInsertMatches extends JDialog {
             conn.commit();
 
             JOptionPane.showMessageDialog(this, "Insertado correctamente");
+            if(onSuccess != null){
+                onSuccess.run();
+            }
             dispose();
 
         } catch (Exception e) {

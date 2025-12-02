@@ -2,9 +2,11 @@ package com.example;
 
 import java.awt.*;
 import javax.swing.*;
+import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 
 public class TablaSelects extends javax.swing.JInternalFrame {
+    private String sqlOriginal;
 
     private String currentCommand;
     private Eventos event;
@@ -147,4 +149,27 @@ public class TablaSelects extends javax.swing.JInternalFrame {
                         "UPDATE no configurado para: " + currentCommand);
         }
     }
+
+    public String getCurrentCommand() {
+        return currentCommand;
+    }
+
+    public void recargarTabla() {
+        try {
+            TableModel nuevoModelo = event.obtenerModeloRefrescado(currentCommand);
+            actualizarModelo(nuevoModelo);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error al refrescar: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void actualizarModelo(TableModel nuevoModelo) {
+        tabla.setModel(nuevoModelo);
+        if (nuevoModelo instanceof AbstractTableModel atm) {
+            atm.fireTableDataChanged(); // Fuerza que JTable se redibuje
+        }
+    }
+
 }

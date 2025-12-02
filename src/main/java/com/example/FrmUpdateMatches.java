@@ -11,7 +11,7 @@ public class FrmUpdateMatches extends JDialog {
     private JComboBox<String> cbCapitanB;
     private JTextField txtFecha;
     private JTextField txtResultado, txtResultadoteams;
-
+    private Runnable onSuccess;
     private Database db;
     private Object matchID;
 
@@ -54,9 +54,11 @@ public class FrmUpdateMatches extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
     }
 
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
+    }
     private void cargarCombos() {
         try {
             ResultSet rs = db.query("SELECT game_code, game_name FROM public.games ORDER BY game_code");
@@ -144,6 +146,7 @@ public class FrmUpdateMatches extends JDialog {
             ps.executeUpdate();
 
             JOptionPane.showMessageDialog(this, "Actualizado correctamente");
+            if (onSuccess != null) onSuccess.run();
             dispose();
 
         } catch (Exception e) {

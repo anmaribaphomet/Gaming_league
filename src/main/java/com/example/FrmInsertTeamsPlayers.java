@@ -10,7 +10,7 @@ public class FrmInsertTeamsPlayers extends JDialog {
     private JComboBox<String> cbJugador;
     private JTextField txtFechaIngreso;
     private JTextField txtFechaSalida;
-
+    private Runnable onSuccess;
     private Database db;
 
     public FrmInsertTeamsPlayers(Frame parent, Database db) {
@@ -45,8 +45,12 @@ public class FrmInsertTeamsPlayers extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
     }
+
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
+    }
+
 
     private void cargarCombos() {
         try {
@@ -108,6 +112,9 @@ public class FrmInsertTeamsPlayers extends JDialog {
             conn.commit();
 
             JOptionPane.showMessageDialog(this, "Miembro agregado al equipo correctamente");
+            if(onSuccess != null){
+                onSuccess.run();
+            }
             dispose();
 
         } catch (Exception e) {

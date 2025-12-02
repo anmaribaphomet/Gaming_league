@@ -15,7 +15,7 @@ public class FrmInsertPlayers extends JDialog {
     private JTextField txtCorreo, txtEdad;
 
     private Database db;
-    private Object playerID;
+    private Runnable onSuccess;
 
     public FrmInsertPlayers(Frame parent, Database db) {
         super(parent, "Insertar Player", true);
@@ -58,7 +58,11 @@ public class FrmInsertPlayers extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
+
+    }
+
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
     }
 
     private void cargarCombos() {
@@ -104,6 +108,9 @@ public class FrmInsertPlayers extends JDialog {
             conn.commit();
 
             JOptionPane.showMessageDialog(this, "Insertado correctamente");
+            if (onSuccess != null) {
+                onSuccess.run();
+            }
             dispose();
 
         } catch (Exception e) {

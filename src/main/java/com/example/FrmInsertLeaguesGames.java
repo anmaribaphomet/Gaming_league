@@ -11,7 +11,7 @@ public class FrmInsertLeaguesGames extends JDialog {
 
     private JComboBox<String> cbLeague;
     private JComboBox<String> cbGame;
-
+    private Runnable onSuccess;
     private Database db;
 
     public FrmInsertLeaguesGames(Frame parent, Database db) {
@@ -38,8 +38,12 @@ public class FrmInsertLeaguesGames extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
     }
+
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
+    }
+
 
     private void cargarCombos() {
         try {
@@ -88,6 +92,9 @@ public class FrmInsertLeaguesGames extends JDialog {
             conn.commit(); // CONFIRMA
 
             JOptionPane.showMessageDialog(this, "Juego asignado a la liga correctamente");
+            if(onSuccess != null){
+                onSuccess.run();
+            }
             dispose();
 
         } catch (Exception e) {

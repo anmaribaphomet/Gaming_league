@@ -11,6 +11,7 @@ public class EstiloForm {
     public static JPanel estiloPanel() {
         JPanel panel = new JPanel(new GridLayout(0, 2, 12, 12));
         panel.setBackground(new Color(245, 245, 250));
+        panel.setSize(300, 200);
 
         panel.setBorder(BorderFactory.createCompoundBorder(
                 new LineBorder(new Color(180, 180, 200), 2, true),

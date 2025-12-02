@@ -14,6 +14,7 @@ public class FrmUpdatePlayers extends JDialog {
     private JTextField txtDireccion, txtTelefono;
     private JTextField txtCorreo, txtEdad;
 
+    private Runnable onSuccess;
     private Database db;
     private Object playerID;
 
@@ -60,7 +61,10 @@ public class FrmUpdatePlayers extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
+    }
+
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
     }
 
     private void cargarCombos() {
@@ -129,6 +133,7 @@ public class FrmUpdatePlayers extends JDialog {
             ps.executeUpdate();
 
             JOptionPane.showMessageDialog(this, "Jugador actualizado correctamente");
+            if (onSuccess != null) onSuccess.run();
             dispose();
 
         } catch (Exception e) {

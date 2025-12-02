@@ -11,7 +11,7 @@ public class FrmInsertGames extends JDialog {
     private JTextField txtDescripcion;
     private JComboBox<String> cbPlataforma;
     private JComboBox<String> cbCategoria;
-
+    private Runnable onSuccess;
 
     private Database db;
 
@@ -46,9 +46,10 @@ public class FrmInsertGames extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
     }
-
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
+    }
     private void cargarCombos() {
         try {
 
@@ -99,6 +100,9 @@ public class FrmInsertGames extends JDialog {
             conn.commit();
 
             JOptionPane.showMessageDialog(this, "Insertado correctamente");
+            if(onSuccess!=null){
+                onSuccess.run();
+            }
             dispose();
 
         } catch (Exception e) {

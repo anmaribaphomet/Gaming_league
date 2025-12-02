@@ -9,7 +9,7 @@ public class FrmUpdateRankings extends JDialog {
     private JComboBox<String> cbNomJugador;
     private JComboBox<String> cbJuego;
     private JTextField txtRanking;
-
+    private Runnable onSuccess;
     private Database db;
     private Object rankingID;
 
@@ -41,7 +41,9 @@ public class FrmUpdateRankings extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
+    }
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
     }
 
     private void cargarCombos() {
@@ -119,6 +121,7 @@ public class FrmUpdateRankings extends JDialog {
             ps.executeUpdate();
 
             JOptionPane.showMessageDialog(this, "Actualizado correctamente");
+            if (onSuccess != null) onSuccess.run();
             dispose();
 
         } catch (Exception e) {

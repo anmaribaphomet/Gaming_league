@@ -10,7 +10,7 @@ public class FrmInsertRankings extends JDialog {
     private JComboBox<String> cbNomJugador;
     private JComboBox<String> cbJuego;
     private JTextField txtRanking;
-
+    private Runnable onSuccess;
     private Database db;
 
     public FrmInsertRankings(Frame parent, Database db) {
@@ -43,7 +43,9 @@ public class FrmInsertRankings extends JDialog {
         add(panel);
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
+    }
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
     }
 
     private void cargarCombos() {
@@ -93,6 +95,9 @@ public class FrmInsertRankings extends JDialog {
             conn.commit();
 
             JOptionPane.showMessageDialog(this, "Insertado correctamente");
+            if (onSuccess != null) {
+                onSuccess.run();
+            }
             dispose();
 
         } catch (Exception e) {
