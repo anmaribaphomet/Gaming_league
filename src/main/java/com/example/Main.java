@@ -19,7 +19,9 @@ public class Main extends JFrame {
     // Items
     private JMenuItem SelectPlayers, SelectRankingjugadores;
     private JMenuItem Selectleagues, Selectleaguesgames;
-    private JMenuItem TeamsPlayers, SelectTeams;
+    private JMenuItem TeamsPlayers, SelectTeams, JugadoresEquipos, Rendimiento, JugadorRanking ;
+    private JMenu Informes;
+
 
     public Main() {
         // Creamos el DesktopPane con fondo
@@ -99,6 +101,22 @@ public class Main extends JFrame {
         gestionDeEquipos.add(SelectTeams);
 
         menuBar.add(gestionDeEquipos);
+
+        Informes = new JMenu("Informes");
+
+        JugadoresEquipos = new JMenuItem("Informe General de Jugadores y Equipos");
+        JugadoresEquipos.addActionListener(evt -> event.evtInformeJugadorEquipo(evt));
+        Informes.add(JugadoresEquipos);
+
+        Rendimiento = new JMenuItem("Estadisticas de Encuentros y Rendimiento Competitivo");
+        Rendimiento.addActionListener(evt -> event.evtInformeRendimiento(evt));
+        Informes.add(Rendimiento);
+
+        JugadorRanking = new JMenuItem("Ranking Global de Jugadores por Juego");
+        JugadorRanking.addActionListener(evt -> event.evtInformeRankingJugadores(evt));
+        Informes.add(JugadorRanking);
+
+        menuBar.add(Informes);
 
         // --- FINAL: Configuración general ---
         setJMenuBar(menuBar);

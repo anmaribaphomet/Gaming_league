@@ -909,4 +909,16 @@ public class Eventos {
         frm.setVisible(true);
     }
 
+    public void evtInformeJugadorEquipo(Object id) {
+
+    }
+
+    public void evtInformeRendimiento(Object id) {
+
+    }
+
+    public void evtInformeRankingJugadores(Object id) {
+
+    }
+
 }
