@@ -82,6 +82,7 @@ public class TablaSelects extends javax.swing.JInternalFrame {
     private void ejecutarDelete() {
 
         Object id = getIDSeleccionado();
+
         if (id == null) {
             JOptionPane.showMessageDialog(this, "Seleccione un registro para eliminar.");
             return;
@@ -94,14 +95,45 @@ public class TablaSelects extends javax.swing.JInternalFrame {
             return;
         }
 
+        // He alineado los nombres de los casos con los nombres de las tablas de la imagen
         switch (currentCommand) {
-            case "players": event.evtEliminarPlayers(id); break;
-            // agregar los demás si los vas implementando
+            case "games":
+                event.evtEliminargames(id);
+                break;
+
+            case "leagues":
+                event.evtEliminarLeagues(id);
+                break;
+
+            case "leagues_games":
+                event.evtEliminarLeaguesgames(id);
+                break;
+
+            case "matches":
+                event.evtEliminarMatches(id);
+                break;
+
+            case "players":
+                event.evtEliminarPlayers(id);
+                break;
+
+            case "rankings":
+                event.evtEliminarRankings(id);
+                break;
+
+            case "teams_players":
+                event.evtEliminarTeamsPlayers(id);
+                break;
+
+            case "teams":
+                event.evtEliminarTeams(id);
+                break;
+
             default:
                 JOptionPane.showMessageDialog(this, "DELETE no configurado para: " + currentCommand);
         }
+        // cargarDatos();
     }
-
     /** UPDATE **/
     private void ejecutarUpdate() {
 
@@ -143,6 +175,7 @@ public class TablaSelects extends javax.swing.JInternalFrame {
             case "teams_players":
                 event.evtUpdateTeamsPlayers(id);
                 break;
+
 
             default:
                 JOptionPane.showMessageDialog(this,
