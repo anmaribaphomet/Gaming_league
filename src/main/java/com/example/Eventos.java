@@ -1,6 +1,7 @@
 package com.example;
 
 import javax.swing.*;
+import javax.swing.table.TableModel;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -26,11 +27,159 @@ public class Eventos {
         }
     }
 
-    //----------------------MATCHES-------------------
-    //Select
-    public void evtSelectMatches(java.awt.event.ActionEvent evt) {
-        try {
-            String sql = """
+
+    public TableModel obtenerModeloRefrescado(String command) {
+        String sql = switch (command) {
+            case "players" -> """
+            SELECT 
+                player_id AS "ID",
+                first_name AS "Nombre",
+                last_name AS "Apellido",
+                CASE gender
+                    WHEN 'M' THEN 'Masculino'
+                    WHEN 'F' THEN 'Femenino'
+                    ELSE 'Otro'
+                END AS "Género",
+                address AS "Dirección",
+                telephone_number AS "Teléfono",
+                email AS "Correo",
+                age AS "Edad"
+            FROM public.players
+            ORDER BY player_id;
+        """;
+
+            case "matches" -> """
+            SELECT
+                m.match_id AS "ID de Partido",
+                g.game_name AS "Juego",
+                p1.first_name || ' ' || p1.last_name AS "Capitán A",
+                p2.first_name || ' ' || p2.last_name AS "Capitán B",
+                m.match_date AS "Fecha",
+                m.result_match AS "Resultado Encuentro",
+                m.result_teams AS "Resultado Equipos"
+            FROM public.matches m
+            JOIN public.games g ON m.game_code = g.game_code
+            JOIN public.players p1 ON m.player_1_id = p1.player_id
+            JOIN public.players p2 ON m.player_2_id = p2.player_id
+            ORDER BY m.match_id;
+            """;
+
+            case "games" -> """
+            SELECT
+                game_code AS "Código del Juego",
+                game_name AS "Nombre del Juego",
+                game_description AS "Descripción",
+                platform AS "Plataforma",
+                category AS "Categoría"
+            FROM public.games
+            ORDER BY game_code;
+            """;
+
+            case "teams" -> """
+            SELECT
+                team_id AS "ID Equipo",
+                team_name AS "Nombre del Equipo",
+                date_created AS "Fecha de Creación",
+                date_disbanded AS "Fecha de Disolución",
+                number_members AS "Número de Miembros",
+                users_name AS "Nombre del Usuario",
+                wins AS "Victorias",
+                ties AS "Empates",
+                defeats AS "Derrotas",
+                created_by_player_id AS "ID Jugador Creador"
+            FROM public.teams
+            ORDER BY team_id;
+            """;
+            case "rankings" -> """
+                    SELECT
+                            pgr.player_id            AS "ID Jugador",
+                            pl.first_name || ' ' || pl.last_name AS "Nombre del Jugador",
+                            g.game_name              AS "Nombre del Juego",
+                            pgr.ranking              AS "Ranking"
+                        FROM public.players_game_ranking AS pgr
+                        JOIN public.players AS pl
+                            ON pgr.player_id = pl.player_id
+                        JOIN public.games AS g
+                            ON pgr.game_code = g.game_code
+                        ORDER BY pgr.player_id;
+                        """;
+
+            case "leagues" ->
+                    """
+            SELECT
+                league_id       AS "ID Liga",
+                league_name     AS "Nombre de la Liga",
+                rank            AS "Rango",
+                category        AS "Categoría",
+                league_duration AS "Duración de la Liga"
+            FROM public.leagues
+            ORDER BY league_id;
+            """;
+
+            case "teams_players" ->
+                    """
+              SELECT
+                  tp.team_id                                   AS "ID Equipo",
+                  t.team_name                                  AS "Nombre del Equipo",
+                  tp.player_id                                 AS "ID Jugador",
+                  pl.first_name || ' ' || pl.last_name         AS "Nombre del Jugador",
+                  tp.date_from                                 AS "Fecha de Ingreso",
+                  tp.date_to                                   AS "Fecha de Salida"
+              FROM public.team_players AS tp
+              JOIN public.teams AS t
+                  ON tp.team_id = t.team_id
+              JOIN public.players AS pl
+                  ON tp.player_id = pl.player_id
+              ORDER BY tp.team_id;
+              """
+            ;
+
+            case "leagues_games" ->
+            """
+                 SELECT
+                    lg.league_id   AS "ID Liga",
+                    l.league_name  AS "Nombre de la Liga",
+                    lg.game_code   AS "Código del Juego",
+                    g.game_name    AS "Nombre del Juego"
+                FROM public.leagues_game AS lg
+                JOIN public.leagues AS l
+                    ON lg.league_id = l.league_id
+                JOIN public.games AS g
+                    ON lg.game_code = g.game_code
+                ORDER BY lg.league_id;
+            """;
+
+                    // Agrega aquí los demás casos de tu aplicación
+                    default -> throw new IllegalArgumentException("No hay SELECT para la tabla: " + command);
+                };
+
+                //Ejecutar consulta usando try-with-resources
+                try (ResultSet rs = db.query(sql)) {
+                    return new JDBCTableAdapter(rs);
+                } catch (SQLException e) {
+                    throw new RuntimeException("Error al refrescar modelo para " + command, e);
+                }
+            }
+
+
+            public TablaSelects buscarTablaAbierta(String command) {
+                for (JInternalFrame frame : desktopPane.getAllFrames()) {
+                    if (frame instanceof TablaSelects ts) {
+                        if (ts.getCurrentCommand().equals(command)) {
+                            return ts;
+                        }
+                    }
+                }
+                return null;
+            }
+
+
+
+                        //----------------------MATCHES-------------------
+                        //Select
+                        public void evtSelectMatches(java.awt.event.ActionEvent evt) {
+                            try {
+                                String sql = """
     SELECT
         m.match_id AS "match_id:ID de Partido",
         g.game_name AS "game_name:Juego",
@@ -66,27 +215,34 @@ public class Eventos {
 
     //Insertar con transacciones
     public void evtInsertMatches(java.awt.event.ActionEvent evt) {
-        //TODO
+        try {
+            FrmInsertMatches frm = new FrmInsertMatches(null, db);
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("matches");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
+
+
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
+
     }
 
 
     //Eliminar por id (matches_id)
-    public void evtEliminarClaveMatches(java.awt.event.ActionEvent evt) {
+    public void evtEliminarMatches(Object id) {
 
-        // Pedir al usuario el ID del match a eliminar
-        String input = JOptionPane.showInputDialog(null,
-                "Ingresa el ID del match que deseas eliminar:",
-                "Eliminar match por ID",
-                JOptionPane.QUESTION_MESSAGE);
-
-        if (input == null) return; // Si presiona Cancelar, salir
-
+        // 1. Convertir el id recibido a entero
         int matchId;
         try {
-            matchId = Integer.parseInt(input); // Convertir input a entero
+            matchId = Integer.parseInt(id.toString());
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(null,
-                    "El ID debe ser un número entero.",
+                    "El ID debe ser un número entero válido.",
                     "Error",
                     JOptionPane.ERROR_MESSAGE);
             return;
@@ -94,9 +250,8 @@ public class Eventos {
 
         Database db = new Database();
 
-        try (Connection conn = db.getConnection()) { // Abrir conexión a la base de datos
-            conn.setAutoCommit(false); // Iniciamos la transacción manualmente, todo lo que hagamos después de esto hasta
-            // commit() o rollback() estará dentro de la transacción
+        try (Connection conn = db.getConnection()) {
+            conn.setAutoCommit(false); // Iniciamos la transacción
 
             try {
                 // Preparar DELETE usando match_id
@@ -105,16 +260,16 @@ public class Eventos {
                 );
                 stmt.setInt(1, matchId);
 
-                int rows = stmt.executeUpdate(); // Ejecutamos la eliminación dentro de la transacción
+                int rows = stmt.executeUpdate();
 
                 if (rows > 0) {
-                    conn.commit(); // Confirmamos la transacción: los cambios se aplican permanentemente
+                    conn.commit(); // Confirmamos la transacción
                     JOptionPane.showMessageDialog(null,
                             "Match eliminado correctamente.",
                             "Éxito",
                             JOptionPane.INFORMATION_MESSAGE);
                 } else {
-                    conn.rollback(); // Si no se eliminó nada, revertimos la transacción
+                    conn.rollback(); // Revertimos si no encontró nada
                     JOptionPane.showMessageDialog(null,
                             "No existe un match con ese ID.",
                             "Aviso",
@@ -122,13 +277,13 @@ public class Eventos {
                 }
 
             } catch (SQLException e) {
-                conn.rollback(); // Si ocurre algún error dentro de la transacción, revertimos todo
+                conn.rollback(); // Revertimos si hubo error SQL
                 JOptionPane.showMessageDialog(null,
                         "Error al eliminar el match:\n" + e.getMessage(),
                         "Error",
                         JOptionPane.ERROR_MESSAGE);
             } finally {
-                conn.setAutoCommit(true); // Restauramos el modo autocommit para futuras operaciones
+                conn.setAutoCommit(true); // Restauramos el estado normal
             }
 
         } catch (SQLException e) {
@@ -138,8 +293,6 @@ public class Eventos {
                     JOptionPane.ERROR_MESSAGE);
         }
     }
-
-
 
     //-------------------------SELECT (BUSCAR)  eventos
 
@@ -376,460 +529,364 @@ public class Eventos {
 
     //-------------------------INSERT eventos
     public void evtInsertPlayers(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"Nombre", "Apellido", "Género", "Dirección", "Teléfono", "Email", "Edad (Número)"};
-        String sql = "INSERT INTO public.players (first_name, last_name, gender, address, telephone_number, email, age) VALUES (?, ?, ?, ?, ?, ?, ?)";
-
-        // Llamamos a la nueva clase estática
-        TableInsert.mostrar(this.db, "Nuevo Jugador", labels, sql, new int[]{6});
+        try {
+            FrmInsertPlayers frm = new FrmInsertPlayers(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("players");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
     }
 
     public void evtInsertRankings(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"ID Jugador (Número)", "Código Juego", "Ranking (Núm)"};
-        String sql = "INSERT INTO public.players_game_ranking (player_id, game_code, ranking) VALUES (?, ?, ?)";
+        try {
+            FrmInsertRankings frm = new FrmInsertRankings(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("rankings");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
-        TableInsert.mostrar(this.db, "Nuevo Ranking", labels, sql, new int[]{0, 2});
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
 
     }
     public void evtInsertgames(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"Código Juego", "Nombre", "Descripción", "Plataforma", "Categoría"};
-        String sql = "INSERT INTO public.games (game_code, game_name, game_description, platform, category) VALUES (?, ?, ?, ?, ?)";
+        try {
+            FrmInsertGames frm = new FrmInsertGames(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("games");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
-        TableInsert.mostrar(this.db, "Nuevo Juego", labels, sql, null);
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
 
     }
     public void evtInsertLeagues(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"Nombre Liga", "Rango", "Categoría", "Duración"};
-        String sql = "INSERT INTO public.leagues (league_name, rank, category, league_duration) VALUES (?, ?, ?, ?)";
+        try {
+            FrmInsertLeagues frm = new FrmInsertLeagues(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("leagues");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
-        TableInsert.mostrar(this.db, "Nueva Liga", labels, sql, null);
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
     }
     public void evtInsertLeaguesgames(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"ID Liga (Número)", "Código Juego"};
-        String sql = "INSERT INTO public.leagues_game (league_id, game_code) VALUES (?, ?)";
+        try {
+            FrmInsertLeaguesGames frm = new FrmInsertLeaguesGames(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("leagues_games");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
-        TableInsert.mostrar(this.db, "Asignar Juego a Liga", labels, sql, new int[]{0});
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
     }
     public void evtInsertTeamsPlayers(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"Nombre Equipo", "ID Capitán (Número)"};
-        String sql = "INSERT INTO public.teams (team_name, created_by_player_id, date_created) VALUES (?, ?, CURRENT_DATE)";
+        try {
+            FrmInsertTeamsPlayers frm = new FrmInsertTeamsPlayers(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("teams_players");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
-        TableInsert.mostrar(this.db, "Nuevo Equipo", labels, sql, new int[]{1});
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
 
     }
     public void evtInsertTeams(java.awt.event.ActionEvent evt) {
-        //TODO
-        String[] labels = {"ID Equipo (Número)", "ID Jugador (Número)", "Fecha Inicio (YYYY-MM-DD)"};
-        String sql = "INSERT INTO public.team_players (team_id, player_id, date_from) VALUES (?, ?, ?::date)";
+        try {
+            FrmInsertTeams frm = new FrmInsertTeams(null, db );
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("teams");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
 
-        TableInsert.mostrar(this.db, "Agregar Jugador a Equipo", labels, sql, new int[]{0, 1});
-
+        } catch (Exception ex) {
+            LOGGER.severe("Error al abrir INSERT: " + ex.getMessage());
+        }
     }
 
     //-------------------------DELETE------------------------------------
-
-    // Métoo para eliminar jugadores
     public void evtEliminarPlayers(Object id) {
-
-        // Convertir el id a entero
         int playerId;
         try {
             playerId = Integer.parseInt(id.toString());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null,
-                    "El ID debe ser un número entero válido.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "El ID debe ser un número entero válido.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         Database db = new Database();
-
         try (Connection conn = db.getConnection()) {
-
-            PreparedStatement stmt = conn.prepareStatement(
-                    "DELETE FROM players WHERE player_id = ?"
-            );
+            PreparedStatement stmt = conn.prepareStatement("DELETE FROM players WHERE player_id = ?");
             stmt.setInt(1, playerId);
-
             int rows = stmt.executeUpdate();
 
             if (rows > 0) {
-                JOptionPane.showMessageDialog(null,
-                        "Jugador eliminado correctamente.",
-                        "Éxito",
-                        JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(null, "Jugador eliminado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(null,
-                        "No existe un jugador con ese ID.",
-                        "Aviso",
-                        JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(null, "No existe un jugador con ese ID.", "Aviso", JOptionPane.WARNING_MESSAGE);
             }
-
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null,
-                    "Error al eliminar jugador:\n" + e.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Error al eliminar jugador:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
 
-    // Métdo para eliminar rankings
-    public void evtEliminarRankings(java.awt.event.ActionEvent evt) {
-
-        // Solicitar al usuario el ID del ranking a eliminar
-        String input = JOptionPane.showInputDialog(null,
-                "Ingresa el ID del ranking que deseas eliminar:",
-                "Eliminar ranking",
-                JOptionPane.QUESTION_MESSAGE);
-
-        if (input == null) return; // Si canceló, salir
-
+    public void evtEliminarRankings(Object id) {
         int rankingId;
         try {
-            rankingId = Integer.parseInt(input); // Convertir a entero
+            rankingId = Integer.parseInt(id.toString());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null,
-                    "El ID debe ser un número entero.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "El ID debe ser un número entero válido.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         Database db = new Database();
-
         try (Connection conn = db.getConnection()) {
-
-            // Preparar la sentencia DELETE para eliminar el ranking
-            PreparedStatement stmt = conn.prepareStatement(
-                    "DELETE FROM players_game_ranking WHERE player_id = ?"
-            );
+            // Asegúrate de que el ID que recibes sea el correcto para borrar
+            PreparedStatement stmt = conn.prepareStatement("DELETE FROM players_game_ranking WHERE player_id = ?");
             stmt.setInt(1, rankingId);
-
-            int rows = stmt.executeUpdate(); // Ejecutar eliminación
+            int rows = stmt.executeUpdate();
 
             if (rows > 0) {
-                JOptionPane.showMessageDialog(null,
-                        "Ranking eliminado correctamente.\n" +
-                                "Los registros relacionados también fueron eliminados automáticamente.",
-                        "Éxito",
-                        JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(null, "Ranking eliminado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(null,
-                        "No existe un ranking con ese ID.",
-                        "Aviso",
-                        JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(null, "No existe un ranking asociado a ese ID.", "Aviso", JOptionPane.WARNING_MESSAGE);
             }
-
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null,
-                    "Error al eliminar ranking:\n" + e.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Error al eliminar ranking:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // Métdo para eliminar juegos
-    public void evtEliminargames(java.awt.event.ActionEvent evt) {
 
-        // Solicitar ID del juego a eliminar
-        String input = JOptionPane.showInputDialog(null,
-                "Ingresa el ID del juego que deseas eliminar:",
-                "Eliminar juego",
-                JOptionPane.QUESTION_MESSAGE);
-
-        if (input == null) return;
-
+    public void evtEliminargames(Object id) {
         int gameId;
         try {
-            gameId = Integer.parseInt(input);
+            gameId = Integer.parseInt(id.toString());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null,
-                    "El ID debe ser un número entero.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "El ID debe ser un número entero válido.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         Database db = new Database();
-
         try (Connection conn = db.getConnection()) {
-
-            // Preparar DELETE para eliminar el juego por su código
-            PreparedStatement stmt = conn.prepareStatement(
-                    "DELETE FROM games WHERE game_code = ?"
-            );
+            // Usamos game_code según tu código anterior
+            PreparedStatement stmt = conn.prepareStatement("DELETE FROM games WHERE game_code = ?");
             stmt.setInt(1, gameId);
-
             int rows = stmt.executeUpdate();
 
             if (rows > 0) {
-                JOptionPane.showMessageDialog(null,
-                        "Juego eliminado correctamente.\n" +
-                                "Los registros relacionados también fueron eliminados automáticamente.",
-                        "Éxito",
-                        JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(null, "Juego eliminado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(null,
-                        "No existe un juego con ese ID.",
-                        "Aviso",
-                        JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(null, "No existe un juego con ese ID.", "Aviso", JOptionPane.WARNING_MESSAGE);
             }
-
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null,
-                    "Error al eliminar juego:\n" + e.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Error al eliminar juego:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // Métdo para eliminar ligas
-    public void evtEliminarLeagues(java.awt.event.ActionEvent evt) {
 
-        String input = JOptionPane.showInputDialog(null,
-                "Ingresa el ID de la liga que deseas eliminar:",
-                "Eliminar liga",
-                JOptionPane.QUESTION_MESSAGE);
-
-        if (input == null) return;
-
+    public void evtEliminarLeagues(Object id) {
         int leagueId;
         try {
-            leagueId = Integer.parseInt(input);
+            leagueId = Integer.parseInt(id.toString());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null,
-                    "El ID debe ser un número entero.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "El ID debe ser un número entero válido.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         Database db = new Database();
-
         try (Connection conn = db.getConnection()) {
-
-            // DELETE en la tabla leagues usando el ID de liga
-            PreparedStatement stmt = conn.prepareStatement(
-                    "DELETE FROM leagues WHERE league_id = ?"
-            );
+            PreparedStatement stmt = conn.prepareStatement("DELETE FROM leagues WHERE league_id = ?");
             stmt.setInt(1, leagueId);
-
             int rows = stmt.executeUpdate();
 
             if (rows > 0) {
-                JOptionPane.showMessageDialog(null,
-                        "Liga eliminada correctamente.\n" +
-                                "Los registros relacionados también fueron eliminados automáticamente.",
-                        "Éxito",
-                        JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(null, "Liga eliminada correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(null,
-                        "No existe una liga con ese ID.",
-                        "Aviso",
-                        JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(null, "No existe una liga con ese ID.", "Aviso", JOptionPane.WARNING_MESSAGE);
             }
-
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null,
-                    "Error al eliminar liga:\n" + e.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Error al eliminar liga:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // Métdo para eliminar registros de liga-juego
-    public void evtEliminarLeaguesgames(java.awt.event.ActionEvent evt) {
-
-        String input = JOptionPane.showInputDialog(null,
-                "Ingresa el ID del registro de liga-juego que deseas eliminar:",
-                "Eliminar registro liga-juego",
-                JOptionPane.QUESTION_MESSAGE);
-
-        if (input == null) return;
-
+    // 6. LEAGUES_GAME (Tabla de relación)
+    public void evtEliminarLeaguesgames(Object id) {
         int lgId;
         try {
-            lgId = Integer.parseInt(input);
+            lgId = Integer.parseInt(id.toString());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null,
-                    "El ID debe ser un número entero.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "El ID debe ser un número entero válido.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         Database db = new Database();
-
         try (Connection conn = db.getConnection()) {
-
-            PreparedStatement stmt = conn.prepareStatement(
-                    "DELETE FROM leagues_game WHERE league_id = ?"
-            );
+            // Verifica si debes borrar por 'league_id' o si la tabla tiene un ID propio
+            PreparedStatement stmt = conn.prepareStatement("DELETE FROM leagues_game WHERE league_id = ?");
             stmt.setInt(1, lgId);
-
             int rows = stmt.executeUpdate();
 
             if (rows > 0) {
-                JOptionPane.showMessageDialog(null,
-                        "Registro de liga-juego eliminado correctamente.",
-                        "Éxito",
-                        JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(null, "Registro de liga-juego eliminado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(null,
-                        "No existe un registro con ese ID.",
-                        "Aviso",
-                        JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(null, "No existe un registro con ese ID.", "Aviso", JOptionPane.WARNING_MESSAGE);
             }
-
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null,
-                    "Error al eliminar el registro:\n" + e.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Error al eliminar el registro:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // Métdo para eliminar registros de equipo-jugador
-    public void evtEliminarTeamsPlayers(java.awt.event.ActionEvent evt) {
-
-        String input = JOptionPane.showInputDialog(null,
-                "Ingresa el ID del registro de equipo-jugador que deseas eliminar:",
-                "Eliminar registro equipo-jugador",
-                JOptionPane.QUESTION_MESSAGE);
-
-        if (input == null) return;
-
+    public void evtEliminarTeamsPlayers(Object id) {
         int tpId;
         try {
-            tpId = Integer.parseInt(input);
+            tpId = Integer.parseInt(id.toString());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null,
-                    "El ID debe ser un número entero.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "El ID debe ser un número entero válido.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         Database db = new Database();
-
         try (Connection conn = db.getConnection()) {
-
-            PreparedStatement stmt = conn.prepareStatement(
-                    "DELETE FROM team_players WHERE team_id = ?"
-            );
+            PreparedStatement stmt = conn.prepareStatement("DELETE FROM team_players WHERE team_id = ?");
             stmt.setInt(1, tpId);
-
             int rows = stmt.executeUpdate();
 
             if (rows > 0) {
-                JOptionPane.showMessageDialog(null,
-                        "Registro de equipo-jugador eliminado correctamente.",
-                        "Éxito",
-                        JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(null, "Registro de equipo-jugador eliminado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(null,
-                        "No existe un registro con ese ID.",
-                        "Aviso",
-                        JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(null, "No existe un registro con ese ID.", "Aviso", JOptionPane.WARNING_MESSAGE);
             }
-
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null,
-                    "Error al eliminar el registro:\n" + e.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Error al eliminar el registro:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    // Métoo para eliminar equipos
-    public void evtEliminarTeams(java.awt.event.ActionEvent evt) {
-
-        String input = JOptionPane.showInputDialog(null,
-                "Ingresa el ID del equipo que deseas eliminar:",
-                "Eliminar equipo",
-                JOptionPane.QUESTION_MESSAGE);
-
-        if (input == null) return;
-
+    public void evtEliminarTeams(Object id) {
         int teamId;
         try {
-            teamId = Integer.parseInt(input);
+            teamId = Integer.parseInt(id.toString());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(null,
-                    "El ID debe ser un número entero.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "El ID debe ser un número entero válido.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         Database db = new Database();
-
         try (Connection conn = db.getConnection()) {
-
-            PreparedStatement stmt = conn.prepareStatement(
-                    "DELETE FROM teams WHERE team_id = ?"
-            );
+            PreparedStatement stmt = conn.prepareStatement("DELETE FROM teams WHERE team_id = ?");
             stmt.setInt(1, teamId);
-
             int rows = stmt.executeUpdate();
 
             if (rows > 0) {
-                JOptionPane.showMessageDialog(null,
-                        "Equipo eliminado correctamente.\n" +
-                                "Los registros relacionados también fueron eliminados automáticamente.",
-                        "Éxito",
-                        JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(null, "Equipo eliminado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(null,
-                        "No existe un equipo con ese ID.",
-                        "Aviso",
-                        JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(null, "No existe un equipo con ese ID.", "Aviso", JOptionPane.WARNING_MESSAGE);
             }
-
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null,
-                    "Error al eliminar el equipo:\n" + e.getMessage(),
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(null, "Error al eliminar el equipo:\n" + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    //-------------------------UPDATE------------------------------------
     public void evtUpdateMatches(Object id) {
-        new FrmUpdateMatches(null, db, id);
+        FrmUpdateMatches frm =  new FrmUpdateMatches(null, db, id);
+        frm.setOnSuccess(() -> {
+            TablaSelects browser = buscarTablaAbierta("matches");
+            if (browser != null) {
+                browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+            }
+        });
+        frm.setVisible(true);
+
     }
 
     public void evtUpdatePlayers(Object id) {
-       // new FrmUpdatePlayers(null, db, id);
+            FrmUpdatePlayers frm = new FrmUpdatePlayers(null, db , id);
+            frm.setOnSuccess(() -> {
+                TablaSelects browser = buscarTablaAbierta("players");
+                if (browser != null) {
+                    browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+                }
+            });
+            frm.setVisible(true);
     }
 
     public void evtUpdateRankings(Object id) {
-       // new FrmUpdateRankings(null, db, id);
+        FrmUpdateRankings frm = new FrmUpdateRankings(null, db, id);
+        frm.setOnSuccess(() -> {
+            // Busca la tabla abierta y recarga
+            TablaSelects browser = buscarTablaAbierta("rankings");
+            if (browser != null) browser.recargarTabla();
+        });
+        frm.setVisible(true);
     }
 
     public void evtUpdateGames(Object id) {
-        //new FrmUpdateGames(null, db, id);
+        FrmUpdateGames frm = new FrmUpdateGames(null, db , id);
+        frm.setOnSuccess(() -> {
+            TablaSelects browser = buscarTablaAbierta("games");
+            if (browser != null) {
+                browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+            }
+        });
+        frm.setVisible(true);
     }
 
     public void evtUpdateLeagues(Object id) {
-       // new FrmUpdateLeagues(null, db, id);
+       new FrmUpdateLeagues(null, db, id);
+        FrmUpdateLeagues frm = new FrmUpdateLeagues(null, db , id);
+        frm.setOnSuccess(() -> {
+            TablaSelects browser = buscarTablaAbierta("leagues");
+            if (browser != null) {
+                browser.recargarTabla(); // Esto llama a obtenerModeloRefrescado y actualiza JTable
+            }
+        });
+        frm.setVisible(true);
     }
 
     public void evtUpdateLeaguesGames(Object id) {
-      //  new FrmUpdateLeaguesGames(null, db, id);
+        new FrmUpdateLeaguesGames(null, db, id);
     }
 
     public void evtUpdateTeams(Object id) {
-        //new FrmUpdateTeams(null, db, id);
+        new FrmUpdateTeams(null, db, id);
     }
 
     public void evtUpdateTeamsPlayers(Object id) {
-       // new FrmUpdateTeamsPlayers(null, db, id);
+        new FrmUpdateTeamsPlayers(null, db, id);
     }
 
 }

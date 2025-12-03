@@ -1,51 +1,52 @@
 package com.example;
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 
 public class Main extends JFrame {
-    //Inicializo la clase de eventos para usar los metodos
+
     private Eventos event;
-    // Componentes UI
-    private JDesktopPane desktopPane;//escritorio interno donde se abren las ventanas de las tablas
-    private JMenuBar menuBar;//barra superior con opciones
+    private JDesktopPane desktopPane;
+    private JMenuBar menuBar;
 
     // Menús principales
-    private JMenu  gestionDeJugadores, gestionDeLigas, gestionDeEquipos;
+    private JMenu gestionDeJugadores, gestionDeLigas, gestionDeEquipos;
 
     // Items
     private JMenuItem SelectPlayers, SelectRankingjugadores;
     private JMenuItem Selectleagues, Selectleaguesgames;
     private JMenuItem TeamsPlayers, SelectTeams;
 
-
-    //Constructor que genera la ventana, inicializa a eventos y ejecuta a los botones con sus acciones
     public Main() {
-        initComponents();
-        event = new Eventos(desktopPane);
-        this.setSize(800, 600);
-        this.setTitle("Gestor de Torneos");
+        // Creamos el DesktopPane con fondo
+        desktopPane = new DesktopPaneConFondo("/foto.png"); // La imagen debe estar en el mismo paquete o en classpath
+        event = new Eventos(desktopPane);//Modificado para inicializar
 
+        initComponents();
+
+        this.setTitle("Gestor de Torneos");
+        this.setSize(800, 600);
+        this.setLocationRelativeTo(null); // Centrar ventana//Modificado
+        this.setDefaultCloseOperation(EXIT_ON_CLOSE);//Modificado
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new Main().setVisible(true));//hace visible la UI
+        SwingUtilities.invokeLater(() -> new Main().setVisible(true));//Hace visible la UI
     }
 
     private void initComponents() {
         menuBar = new JMenuBar();
-        desktopPane = new JDesktopPane();
 
         // --- MATCHES --- Visualizar
         JMenu TablaMatches = new JMenu("Matches");
         TablaMatches.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                ActionEvent fake = new ActionEvent(TablaMatches, ActionEvent.ACTION_PERFORMED, "click");
-                event.evtSelectMatches(fake);
+                event.evtSelectMatches(new ActionEvent(TablaMatches, ActionEvent.ACTION_PERFORMED, "click"));
             }
         });
         menuBar.add(TablaMatches);
@@ -65,12 +66,10 @@ public class Main extends JFrame {
 
         //-------------------------------- Juegos
         JMenu Selectgames = new JMenu("Juegos");
-
         Selectgames.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                ActionEvent fake = new ActionEvent(Selectgames, ActionEvent.ACTION_PERFORMED, "click");
-                event.evtSelectgames(fake);
+                event.evtSelectgames(new ActionEvent(Selectgames, ActionEvent.ACTION_PERFORMED, "click"));
             }
         });
         menuBar.add(Selectgames);
@@ -101,14 +100,34 @@ public class Main extends JFrame {
 
         menuBar.add(gestionDeEquipos);
 
-
         // --- FINAL: Configuración general ---
         setJMenuBar(menuBar);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        getContentPane().setLayout(new java.awt.BorderLayout());
-        getContentPane().add(desktopPane, java.awt.BorderLayout.CENTER);
+        getContentPane().setLayout(new BorderLayout());
+        getContentPane().add(desktopPane, BorderLayout.CENTER);
 
         pack();
+    }
+
+    // Clase para DesktopPane con fondo
+    private static class DesktopPaneConFondo extends JDesktopPane {
+        private Image fondo;
+
+        public DesktopPaneConFondo(String rutaImagen) {
+            try {
+                fondo = new ImageIcon(getClass().getResource(rutaImagen)).getImage();
+            } catch (Exception e) {
+                System.err.println("No se pudo cargar la imagen: " + rutaImagen);
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (fondo != null) {
+                g.drawImage(fondo, 0, 0, getWidth(), getHeight(), this);
+            }
+        }
     }
 }

@@ -2,9 +2,11 @@ package com.example;
 
 import java.awt.*;
 import javax.swing.*;
+import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableModel;
 
 public class TablaSelects extends javax.swing.JInternalFrame {
+    private String sqlOriginal;
 
     private String currentCommand;
     private Eventos event;
@@ -80,6 +82,7 @@ public class TablaSelects extends javax.swing.JInternalFrame {
     private void ejecutarDelete() {
 
         Object id = getIDSeleccionado();
+
         if (id == null) {
             JOptionPane.showMessageDialog(this, "Seleccione un registro para eliminar.");
             return;
@@ -92,14 +95,45 @@ public class TablaSelects extends javax.swing.JInternalFrame {
             return;
         }
 
+        // He alineado los nombres de los casos con los nombres de las tablas de la imagen
         switch (currentCommand) {
-            case "players": event.evtEliminarPlayers(id); break;
-            // agregar los demás si los vas implementando
+            case "games":
+                event.evtEliminargames(id);
+                break;
+
+            case "leagues":
+                event.evtEliminarLeagues(id);
+                break;
+
+            case "leagues_games":
+                event.evtEliminarLeaguesgames(id);
+                break;
+
+            case "matches":
+                event.evtEliminarMatches(id);
+                break;
+
+            case "players":
+                event.evtEliminarPlayers(id);
+                break;
+
+            case "rankings":
+                event.evtEliminarRankings(id);
+                break;
+
+            case "teams_players":
+                event.evtEliminarTeamsPlayers(id);
+                break;
+
+            case "teams":
+                event.evtEliminarTeams(id);
+                break;
+
             default:
                 JOptionPane.showMessageDialog(this, "DELETE no configurado para: " + currentCommand);
         }
+        // cargarDatos();
     }
-
     /** UPDATE **/
     private void ejecutarUpdate() {
 
@@ -142,9 +176,33 @@ public class TablaSelects extends javax.swing.JInternalFrame {
                 event.evtUpdateTeamsPlayers(id);
                 break;
 
+
             default:
                 JOptionPane.showMessageDialog(this,
                         "UPDATE no configurado para: " + currentCommand);
         }
     }
+
+    public String getCurrentCommand() {
+        return currentCommand;
+    }
+
+    public void recargarTabla() {
+        try {
+            TableModel nuevoModelo = event.obtenerModeloRefrescado(currentCommand);
+            actualizarModelo(nuevoModelo);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Error al refrescar: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void actualizarModelo(TableModel nuevoModelo) {
+        tabla.setModel(nuevoModelo);
+        if (nuevoModelo instanceof AbstractTableModel atm) {
+            atm.fireTableDataChanged(); // Fuerza que JTable se redibuje
+        }
+    }
+
 }

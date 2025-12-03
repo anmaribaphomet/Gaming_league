@@ -108,6 +108,6 @@ public class JDBCTableAdapter extends DefaultTableModel {
 
     @Override
     public boolean isCellEditable(int row, int column) {
-        return false;  // 🔥 AHORA NINGUNA CELDA ES EDITABLE
+        return false;
     }
 }
