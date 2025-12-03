@@ -2,32 +2,27 @@ package com.example;
 
 import javax.swing.*;
 import java.awt.*;
-import java.sql.Connection;        // Importación necesaria para evitar error en var
-import java.sql.PreparedStatement; // Importación necesaria para evitar error en var
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 
 public class FrmUpdateTeamsPlayers extends JDialog {
 
-    // Componentes visuales igual que en tu ejemplo
     private JComboBox<String> cbTeam;
     private JComboBox<String> cbPlayer;
-    private JTextField txtDateFrom;
-    private JTextField txtDateTo;
-
+    private JTextField txtDateFrom, txtDateTo;
     private Database db;
-
-    // El ID principal que recibimos (team_id)
     private Object currentTeamId;
-
-    // Variables para guardar los valores ORIGINALES (necesarios para el WHERE por la clave compuesta)
     private int originalPlayerId;
     private String originalDateFrom;
+
+    // Variable para callback
+    private Runnable onSuccess;
 
     public FrmUpdateTeamsPlayers(Frame parent, Database db, Object id) {
         super(parent, "Actualizar Equipo-Jugador", true);
         this.db = db;
-        this.currentTeamId = id; // Recibimos el ID del equipo
+        this.currentTeamId = id;
 
         setLayout(new GridLayout(0, 2, 5, 5));
 
@@ -36,18 +31,13 @@ public class FrmUpdateTeamsPlayers extends JDialog {
         txtDateFrom = new JTextField();
         txtDateTo = new JTextField();
 
-        add(new JLabel("Equipo:"));
-        add(cbTeam);
-        add(new JLabel("Jugador:"));
-        add(cbPlayer);
-        add(new JLabel("Fecha Desde:"));
-        add(txtDateFrom);
-        add(new JLabel("Fecha Hasta:"));
-        add(txtDateTo);
+        add(new JLabel("Equipo:")); add(cbTeam);
+        add(new JLabel("Jugador:")); add(cbPlayer);
+        add(new JLabel("Fecha Desde:")); add(txtDateFrom);
+        add(new JLabel("Fecha Hasta:")); add(txtDateTo);
 
         JButton btnActualizar = new JButton("Actualizar");
         add(btnActualizar);
-
         btnActualizar.addActionListener(evt -> actualizar());
 
         cargarCombos();
@@ -55,56 +45,40 @@ public class FrmUpdateTeamsPlayers extends JDialog {
 
         pack();
         setLocationRelativeTo(parent);
-        setVisible(true);
+        // setVisible(true); // REMOVIDO
+    }
+
+    public void setOnSuccess(Runnable onSuccess) {
+        this.onSuccess = onSuccess;
     }
 
     private void cargarCombos() {
         try {
-            // Cargar Equipos
-            ResultSet rs = db.query("SELECT team_id, team_name FROM public.teams ORDER BY team_id");
-            while (rs.next()) {
-                cbTeam.addItem(rs.getInt(1) + " - " + rs.getString(2));
-            }
-            // Cargar Jugadores
-            rs = db.query("SELECT player_id, first_name || ' ' || last_name FROM public.players ORDER BY player_id");
-            while (rs.next()) {
-                cbPlayer.addItem(rs.getInt(1) + " - " + rs.getString(2));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+            ResultSet rs = db.query("SELECT team_id, team_name FROM teams ORDER BY team_id");
+            while (rs.next()) cbTeam.addItem(rs.getInt(1) + " - " + rs.getString(2));
+            rs = db.query("SELECT player_id, first_name || ' ' || last_name FROM players ORDER BY player_id");
+            while (rs.next()) cbPlayer.addItem(rs.getInt(1) + " - " + rs.getString(2));
+        } catch (Exception e) {}
     }
 
     private void cargarDatos() {
         try {
-            // Buscamos por el team_id (LIMIT 1 porque un equipo puede tener varios, tomamos el primero para editar)
-            ResultSet rs = db.query("SELECT * FROM public.team_players WHERE team_id = " + currentTeamId + " LIMIT 1");
-
+            ResultSet rs = db.query("SELECT * FROM team_players WHERE team_id = " + currentTeamId + " LIMIT 1");
             if (rs.next()) {
-                int tId = rs.getInt("team_id");
-                int pId = rs.getInt("player_id");
-                String dFrom = rs.getString("date_from");
+                originalPlayerId = rs.getInt("player_id");
+                originalDateFrom = rs.getString("date_from");
+                seleccionarPorID(cbTeam, rs.getInt("team_id"));
+                seleccionarPorID(cbPlayer, originalPlayerId);
+                txtDateFrom.setText(originalDateFrom);
                 String dTo = rs.getString("date_to");
-
-                // Guardamos referencias originales para el WHERE
-                this.originalPlayerId = pId;
-                this.originalDateFrom = dFrom;
-
-                seleccionarPorID(cbTeam, tId);
-                seleccionarPorID(cbPlayer, pId);
-
-                txtDateFrom.setText(dFrom);
                 txtDateTo.setText(dTo != null ? dTo : "");
             }
-        } catch (Exception e) {
-            // Manejo de error vacío como en tu ejemplo original
-        }
+        } catch (Exception e) {}
     }
 
     private void seleccionarPorID(JComboBox<String> combo, int id) {
         for (int i = 0; i < combo.getItemCount(); i++) {
-            String item = combo.getItemAt(i);
-            if (item.startsWith(id + " -")) {
+            if (combo.getItemAt(i).toString().startsWith(id + " -")) {
                 combo.setSelectedIndex(i);
                 break;
             }
@@ -112,55 +86,40 @@ public class FrmUpdateTeamsPlayers extends JDialog {
     }
 
     private void actualizar() {
-
-        // Obtener datos de los combos y cajas de texto
-        int newTeamId = Integer.parseInt(cbTeam.getSelectedItem().toString().split(" - ")[0]);
-        int newPlayerId = Integer.parseInt(cbPlayer.getSelectedItem().toString().split(" - ")[0]);
-
-        String newDateFrom = txtDateFrom.getText(); // debe venir como YYYY-MM-DD
-        String newDateTo = txtDateTo.getText();
-
-        String sql = """
-        UPDATE public.team_players
-        SET team_id = ?,
-            player_id = ?,
-            date_from = ?,
-            date_to = ?
-        WHERE team_id = ? 
-          AND player_id = ? 
-          AND date_from = ?
-        """;
-
         try {
-            // CORRECCIÓN: Usamos tipos explícitos en lugar de 'var' y añadimos los imports arriba
+            int newTeamId = Integer.parseInt(cbTeam.getSelectedItem().toString().split(" - ")[0]);
+            int newPlayerId = Integer.parseInt(cbPlayer.getSelectedItem().toString().split(" - ")[0]);
+            String newDateFrom = txtDateFrom.getText();
+            String newDateTo = txtDateTo.getText();
+
+            String sql = """
+                UPDATE team_players SET team_id=?, player_id=?, date_from=?, date_to=? 
+                WHERE team_id=? AND player_id=? AND date_from=?
+            """;
+
             Connection conn = db.getConnection();
             PreparedStatement ps = conn.prepareStatement(sql);
 
-            // 1. Valores Nuevos (SET)
             ps.setInt(1, newTeamId);
             ps.setInt(2, newPlayerId);
             ps.setDate(3, java.sql.Date.valueOf(newDateFrom));
 
-            // Manejo de fecha nula para date_to
-            if (newDateTo == null || newDateTo.trim().isEmpty()) {
-                ps.setNull(4, java.sql.Types.DATE);
-            } else {
-                ps.setDate(4, java.sql.Date.valueOf(newDateTo));
-            }
+            if (newDateTo == null || newDateTo.trim().isEmpty()) ps.setNull(4, java.sql.Types.DATE);
+            else ps.setDate(4, java.sql.Date.valueOf(newDateTo));
 
-            // 2. Valores Antiguos (WHERE) - Usamos currentTeamId y las variables originales guardadas
             ps.setInt(5, Integer.parseInt(currentTeamId.toString()));
             ps.setInt(6, originalPlayerId);
             ps.setDate(7, java.sql.Date.valueOf(originalDateFrom));
 
-            ps.executeUpdate();
+            int rows = ps.executeUpdate();
 
-            JOptionPane.showMessageDialog(this, "Actualizado correctamente");
-            dispose();
-
+            if (rows > 0) {
+                if (onSuccess != null) onSuccess.run(); // Callback
+                JOptionPane.showMessageDialog(this, "Actualizado correctamente");
+                dispose();
+            }
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 }

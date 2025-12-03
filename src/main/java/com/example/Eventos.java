@@ -866,7 +866,6 @@ public class Eventos {
     }
 
     public void evtUpdateLeagues(Object id) {
-       new FrmUpdateLeagues(null, db, id);
         FrmUpdateLeagues frm = new FrmUpdateLeagues(null, db , id);
         frm.setOnSuccess(() -> {
             TablaSelects browser = buscarTablaAbierta("leagues");
@@ -878,15 +877,36 @@ public class Eventos {
     }
 
     public void evtUpdateLeaguesGames(Object id) {
-        new FrmUpdateLeaguesGames(null, db, id);
-    }
-
-    public void evtUpdateTeams(Object id) {
-        new FrmUpdateTeams(null, db, id);
+        FrmUpdateLeaguesGames frm = new FrmUpdateLeaguesGames(null, db, id);
+        frm.setOnSuccess(() -> {
+            TablaSelects browser = buscarTablaAbierta("leagues_games");
+            if (browser != null) {
+                browser.recargarTabla();
+            }
+        });
+        frm.setVisible(true);
     }
 
     public void evtUpdateTeamsPlayers(Object id) {
-        new FrmUpdateTeamsPlayers(null, db, id);
+        FrmUpdateTeamsPlayers frm = new FrmUpdateTeamsPlayers(null, db, id);
+        frm.setOnSuccess(() -> {
+            TablaSelects browser = buscarTablaAbierta("teams_players");
+            if (browser != null) {
+                browser.recargarTabla();
+            }
+        });
+        frm.setVisible(true);
+    }
+
+    public void evtUpdateTeams(Object id) {
+        FrmUpdateTeams frm = new FrmUpdateTeams(null, db, id);
+        frm.setOnSuccess(() -> {
+            TablaSelects browser = buscarTablaAbierta("teams");
+            if (browser != null) {
+                browser.recargarTabla();
+            }
+        });
+        frm.setVisible(true);
     }
 
 }
