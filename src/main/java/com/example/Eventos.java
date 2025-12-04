@@ -2,7 +2,6 @@ package com.example;
 
 import javax.swing.*;
 import javax.swing.table.TableModel;
-import java.awt.Color;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -13,11 +12,8 @@ import net.sf.dynamicreports.jasper.builder.JasperReportBuilder;
 import net.sf.dynamicreports.report.builder.column.TextColumnBuilder;
 import net.sf.dynamicreports.report.builder.style.StyleBuilder;
 import net.sf.dynamicreports.report.constant.HorizontalAlignment;
-import net.sf.dynamicreports.report.constant.PageType;
-import net.sf.dynamicreports.jasper.builder.JasperConcatenatedReportBuilder;
 import net.sf.jasperreports.engine.JasperPrint;
 import net.sf.jasperreports.view.JasperViewer;
-import net.sf.jasperreports.engine.JREmptyDataSource;
 
 
 public class Eventos {
@@ -922,9 +918,131 @@ public class Eventos {
 
 
 
-    public void evtInformeJugadorEquipo(Object id) {
+    public void evtInformeJugadorEquipo(Object teamId) {
+        Database dbReporte = new Database();
 
+        try (Connection conn = dbReporte.getConnection()) {
+
+            // ESTILOS VISUALES
+            StyleBuilder tituloStyle = stl.style()
+                    .bold()
+                    .setFontSize(14)
+                    .setHorizontalAlignment(HorizontalAlignment.CENTER)
+                    .setPadding(10);
+
+            StyleBuilder colStyle = stl.style()
+                    .setBorder(stl.pen1Point())
+                    .setPadding(5);
+
+            // 1. LISTA DE JUGADORES POR EQUIPO
+            String sql1 = """
+            SELECT t.team_name, p.first_name || ' ' || p.last_name AS jugador,
+                   tp.date_from AS fecha_ingreso, tp.date_to AS fecha_salida
+            FROM team_players tp
+            JOIN teams t ON tp.team_id = t.team_id
+            JOIN players p ON tp.player_id = p.player_id
+            ORDER BY t.team_name, tp.date_from
+        """;
+
+            String titulo1 = "1. Lista de Jugadores por Equipo";
+
+            // Filtrar por equipo si se recibe un ID
+            if (teamId != null) {
+                try {
+                    int idFiltro = Integer.parseInt(teamId.toString());
+                    sql1 = sql1.replace("ORDER BY", "WHERE t.team_id = " + idFiltro + " ORDER BY");
+                    titulo1 = "1. Lista de Jugadores (Filtrado por Equipo ID: " + idFiltro + ")";
+                } catch (Exception e) {
+                    System.out.println("ID de equipo inválido, se omite el filtro.");
+                }
+            }
+
+            TextColumnBuilder<String> colEquipo1 = col.column("Equipo", "team_name", type.stringType());
+
+            JasperReportBuilder reporte1 = report()
+                    .title(cmp.text(titulo1).setStyle(tituloStyle))
+                    .columns(
+                            col.column("Jugador", "jugador", type.stringType()).setStyle(colStyle),
+                            col.column("Fecha de Ingreso", "fecha_ingreso", type.dateType()).setStyle(colStyle),
+                            col.column("Fecha de Salida", "fecha_salida", type.dateType()).setStyle(colStyle)
+                    )
+                    .groupBy(colEquipo1)
+                    .setDataSource(sql1, conn);
+
+            // 2. CANTIDAD DE JUGADORES POR EQUIPO
+            String sql2 = """
+            SELECT t.team_name, COUNT(tp.player_id) AS cantidad_jugadores
+            FROM teams t
+            LEFT JOIN team_players tp ON t.team_id = tp.team_id
+            GROUP BY t.team_name
+            ORDER BY cantidad_jugadores DESC
+        """;
+
+            JasperReportBuilder reporte2 = report()
+                    .title(cmp.text("\n\n2. Cantidad de Jugadores por Equipo").setStyle(tituloStyle))
+                    .columns(
+                            col.column("Equipo", "team_name", type.stringType()).setStyle(colStyle),
+                            col.column("Cantidad de Jugadores", "cantidad_jugadores", type.integerType())
+                                    .setStyle(colStyle)
+                                    .setHorizontalAlignment(HorizontalAlignment.CENTER)
+                    )
+                    .setDataSource(sql2, conn);
+
+            // 3. JUGADORES SIN EQUIPO
+            String sql3 = """
+            SELECT p.player_id, p.first_name || ' ' || p.last_name AS jugador, p.email
+            FROM players p
+            LEFT JOIN team_players tp ON p.player_id = tp.player_id
+            WHERE tp.team_id IS NULL
+            ORDER BY p.player_id
+        """;
+
+            JasperReportBuilder reporte3 = report()
+                    .title(cmp.text("\n\n3. Jugadores Sin Equipo").setStyle(tituloStyle))
+                    .columns(
+                            col.column("ID", "player_id", type.integerType()).setStyle(colStyle).setFixedColumns(3),
+                            col.column("Jugador", "jugador", type.stringType()).setStyle(colStyle),
+                            col.column("Email", "email", type.stringType()).setStyle(colStyle)
+                    )
+                    .setDataSource(sql3, conn);
+
+
+            try {
+                StyleBuilder mainTitleStyle = stl.style(tituloStyle).setFontSize(18);
+
+                JasperReportBuilder reporteMaestro = report()
+                        .title(cmp.text("Informe Completo de Jugadores por Equipo")
+                                .setStyle(mainTitleStyle))
+                        .summary(
+                                cmp.subreport(reporte1),
+                                cmp.verticalGap(20),
+                                cmp.pageBreak(),
+
+                                cmp.subreport(reporte2),
+                                cmp.verticalGap(20),
+                                cmp.pageBreak(),
+
+                                cmp.subreport(reporte3),
+                                cmp.verticalGap(20),
+                                cmp.pageBreak()
+                        )
+                        .setDataSource(new net.sf.jasperreports.engine.JREmptyDataSource());
+
+                // Generar y mostrar
+                JasperPrint print = reporteMaestro.toJasperPrint();
+                JasperViewer.viewReport(print, false);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(null, "Error al unir reportes: " + e.getMessage());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error general: " + e.getMessage());
+        }
     }
+
 
     public void evtInformeRendimiento(Object id) {
         Database dbReporte = new Database();
