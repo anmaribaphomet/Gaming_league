@@ -2,11 +2,22 @@ package com.example;
 
 import javax.swing.*;
 import javax.swing.table.TableModel;
+import java.awt.Color;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.logging.Logger;
+import static net.sf.dynamicreports.report.builder.DynamicReports.*;
+import net.sf.dynamicreports.jasper.builder.JasperReportBuilder;
+import net.sf.dynamicreports.report.builder.column.TextColumnBuilder;
+import net.sf.dynamicreports.report.builder.style.StyleBuilder;
+import net.sf.dynamicreports.report.constant.HorizontalAlignment;
+import net.sf.dynamicreports.report.constant.PageType;
+import net.sf.dynamicreports.jasper.builder.JasperConcatenatedReportBuilder;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.view.JasperViewer;
+import net.sf.jasperreports.engine.JREmptyDataSource;
 
 
 public class Eventos {
@@ -909,16 +920,324 @@ public class Eventos {
         frm.setVisible(true);
     }
 
+
+
     public void evtInformeJugadorEquipo(Object id) {
 
     }
 
     public void evtInformeRendimiento(Object id) {
+        Database dbReporte = new Database();
 
+        try (Connection conn = dbReporte.getConnection()) {
+
+            // --- ESTILOS VISUALES ---
+            StyleBuilder tituloStyle = stl.style()
+                    .bold()
+                    .setFontSize(14)
+                    .setHorizontalAlignment(HorizontalAlignment.CENTER)
+                    .setPadding(10);
+
+            StyleBuilder colStyle = stl.style()
+                    .setBorder(stl.pen1Point())
+                    .setPadding(5);
+
+            // ======================================================================================
+            // 1. RESUMEN DE PARTIDOS POR JUEGO
+            // ======================================================================================
+            String sql1 = """
+                SELECT g.game_name, COUNT(m.match_id) as total_partidos
+                FROM matches m
+                JOIN games g ON m.game_code = g.game_code
+                GROUP BY g.game_name
+                ORDER BY total_partidos DESC
+            """;
+
+            String titulo1 = "1. Resumen de Actividad por Juego";
+
+            // Filtro opcional
+            if (id != null) {
+                try {
+                    int idFiltro = Integer.parseInt(id.toString());
+                    sql1 = sql1.replace("GROUP BY", "WHERE m.game_code = " + idFiltro + " GROUP BY");
+                    titulo1 = "1. Resumen de Actividad (Juego ID: " + idFiltro + ")";
+                } catch(Exception e) {}
+            }
+
+            JasperReportBuilder reporte1 = report()
+                    .title(cmp.text(titulo1).setStyle(tituloStyle))
+                    .columns(
+                            col.column("Videojuego", "game_name", type.stringType()).setStyle(colStyle),
+                            col.column("Total Partidos", "total_partidos", type.integerType())
+                                    .setStyle(colStyle).setHorizontalAlignment(HorizontalAlignment.CENTER)
+                    )
+                    .setDataSource(sql1, conn);
+
+            // ======================================================================================
+            // 2. HISTORIAL DETALLADO DE ENCUENTROS
+            // ======================================================================================
+            String sql2 = """
+                SELECT m.match_id, g.game_name, m.match_date,
+                       p1.first_name || ' ' || p1.last_name as capitan_a,
+                       p2.first_name || ' ' || p2.last_name as capitan_b,
+                       m.result_match, m.result_teams
+                FROM matches m
+                JOIN games g ON m.game_code = g.game_code
+                JOIN players p1 ON m.player_1_id = p1.player_id
+                JOIN players p2 ON m.player_2_id = p2.player_id
+                ORDER BY m.match_date DESC
+            """;
+
+            if (id != null) {
+                try {
+                    int idFiltro = Integer.parseInt(id.toString());
+                    sql2 = sql2.replace("ORDER BY", "WHERE m.game_code = " + idFiltro + " ORDER BY");
+                } catch(Exception e) {}
+            }
+
+            JasperReportBuilder reporte2 = report()
+                    .title(cmp.text("\n\n2. Historial Reciente de Encuentros").setStyle(tituloStyle))
+                    .columns(
+                            col.column("Fecha", "match_date", type.dateType()).setPattern("yyyy-MM-dd").setStyle(colStyle),
+                            col.column("Juego", "game_name", type.stringType()).setStyle(colStyle),
+                            col.column("Capitán A", "capitan_a", type.stringType()).setStyle(colStyle),
+                            col.column("Capitán B", "capitan_b", type.stringType()).setStyle(colStyle),
+                            col.column("Resultado", "result_match", type.stringType()).setStyle(colStyle),
+                            col.column("Ganador", "result_teams", type.stringType()).setStyle(colStyle)
+                    )
+                    .setDataSource(sql2, conn);
+
+            // ======================================================================================
+            // 3. JUGADORES MÁS ACTIVOS (Como Capitanes)
+            // ======================================================================================
+            String sql3 = """
+                SELECT p.first_name || ' ' || p.last_name as jugador, COUNT(*) as apariciones
+                FROM (
+                    SELECT player_1_id as pid FROM matches
+                    UNION ALL
+                    SELECT player_2_id as pid FROM matches
+                ) as combined
+                JOIN players p ON combined.pid = p.player_id
+                GROUP BY p.player_id, p.first_name, p.last_name
+                ORDER BY apariciones DESC
+                LIMIT 10
+            """;
+
+            JasperReportBuilder reporte3 = report()
+                    .title(cmp.text("\n\n3. Top 10 Capitanes Más Activos").setStyle(tituloStyle))
+                    .columns(
+                            col.column("Jugador", "jugador", type.stringType()).setStyle(colStyle),
+                            col.column("Partidos Liderados", "apariciones", type.integerType())
+                                    .setStyle(colStyle).setHorizontalAlignment(HorizontalAlignment.CENTER)
+                    )
+                    .setDataSource(sql3, conn);
+
+            // ======================================================================================
+            // 4. ESTADÍSTICAS DE RESULTADOS
+            // ======================================================================================
+            String sql4 = """
+                SELECT result_match, COUNT(*) as cantidad
+                FROM matches
+                GROUP BY result_match
+                ORDER BY cantidad DESC
+            """;
+
+            JasperReportBuilder reporte4 = report()
+                    .title(cmp.text("\n\n4. Desglose de Resultados").setStyle(tituloStyle))
+                    .columns(
+                            col.column("Tipo de Resultado", "result_match", type.stringType()).setStyle(colStyle),
+                            col.column("Cantidad", "cantidad", type.integerType())
+                                    .setStyle(colStyle).setHorizontalAlignment(HorizontalAlignment.CENTER)
+                    )
+                    .setDataSource(sql4, conn);
+
+            // ======================================================================================
+            // REPORTE MAESTRO (Contenedor Final)
+            // ======================================================================================
+
+            try {
+                StyleBuilder mainTitleStyle = stl.style(tituloStyle).setFontSize(18);
+
+                JasperReportBuilder reporteMaestro = report();
+
+                reporteMaestro
+                        .title(cmp.text("Informe de Rendimiento Competitivo")
+                                .setStyle(mainTitleStyle))
+                        .summary(
+                                cmp.subreport(reporte1),      // Reporte 1
+                                cmp.verticalGap(20),
+                                cmp.pageBreak(),
+
+                                cmp.subreport(reporte2),      // Reporte 2
+                                cmp.verticalGap(20),
+                                cmp.pageBreak(),
+
+                                cmp.subreport(reporte3),      // Reporte 3
+                                cmp.verticalGap(20),
+
+                                cmp.subreport(reporte4)       // Reporte 4
+                        )
+                        .setDataSource(new net.sf.jasperreports.engine.JREmptyDataSource());
+
+                // Generar y Mostrar
+                JasperPrint print = reporteMaestro.toJasperPrint();
+                JasperViewer.viewReport(print, false);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(null, "Error al unir reportes: " + e.getMessage());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error general: " + e.getMessage());
+        }
     }
 
     public void evtInformeRankingJugadores(Object id) {
+        Database dbReporte = new Database();
 
+        try (Connection conn = dbReporte.getConnection()) {
+
+            // ======================================================================================
+            // A) ESTILOS VISUALES
+            // ======================================================================================
+            StyleBuilder tituloStyle = stl.style()
+                    .bold()
+                    .setFontSize(14)
+                    .setHorizontalAlignment(HorizontalAlignment.CENTER)
+                    .setPadding(10);
+
+            StyleBuilder colStyle = stl.style()
+                    .setBorder(stl.pen1Point())
+                    .setPadding(5);
+
+            // ======================================================================================
+            // 1. REPORTE DE RANKING (Filtrable por Juego)
+            // ======================================================================================
+            String sql1 = """
+            SELECT g.game_name, p.first_name || ' ' || p.last_name AS jugador, 
+                   r.ranking, g.category
+            FROM players_game_ranking r
+            JOIN players p ON r.player_id = p.player_id
+            JOIN games g ON r.game_code = g.game_code
+            ORDER BY g.game_name ASC, r.ranking ASC
+        """;
+
+            String titulo1 = "1. Ranking Oficial de Jugadores (Global)";
+
+            if (id != null) {
+                try {
+                    int idFiltro = Integer.parseInt(id.toString());
+                    sql1 = sql1.replace("ORDER BY", "WHERE g.game_code = " + idFiltro + " ORDER BY");
+                    titulo1 = "1. Ranking Oficial (Filtrado por Juego ID: " + idFiltro + ")";
+                } catch(Exception e) {
+                    System.out.println("ID inválido para filtro, se omite.");
+                }
+            }
+
+            TextColumnBuilder<String> colJuego1 = col.column("Juego", "game_name", type.stringType());
+
+            JasperReportBuilder reporte1 = report()
+                    .title(cmp.text(titulo1).setStyle(tituloStyle))
+                    .columns(
+                            col.column("Jugador", "jugador", type.stringType()).setStyle(colStyle),
+                            col.column("Posición", "ranking", type.integerType()).setStyle(colStyle).setHorizontalAlignment(HorizontalAlignment.CENTER),
+                            col.column("Categoría", "category", type.stringType()).setStyle(colStyle)
+                    )
+                    .groupBy(colJuego1)
+                    .setDataSource(sql1, conn);
+
+            // ======================================================================================
+            // 2. TOP 5 JUGADORES POR CATEGORÍA
+            // ======================================================================================
+            String sql2 = """
+            WITH RankedPlayers AS (
+                SELECT g.category, p.first_name || ' ' || p.last_name as jugador, r.ranking, g.game_name,
+                       ROW_NUMBER() OVER (PARTITION BY g.category ORDER BY r.ranking ASC) as rn
+                FROM players_game_ranking r
+                JOIN players p ON r.player_id = p.player_id
+                JOIN games g ON r.game_code = g.game_code
+            )
+            SELECT category, jugador, ranking, game_name
+            FROM RankedPlayers
+            WHERE rn <= 5
+            ORDER BY category, ranking
+        """;
+
+            TextColumnBuilder<String> colCat2 = col.column("Categoría", "category", type.stringType());
+
+            JasperReportBuilder reporte2 = report()
+                    .title(cmp.text("\n\n2. Top 5 Jugadores por Categoría").setStyle(tituloStyle))
+                    .columns(
+                            col.column("Jugador", "jugador", type.stringType()).setStyle(colStyle),
+                            col.column("Ranking", "ranking", type.integerType()).setStyle(colStyle).setHorizontalAlignment(HorizontalAlignment.CENTER),
+                            col.column("Juego", "game_name", type.stringType()).setStyle(colStyle)
+                    )
+                    .groupBy(colCat2)
+                    .setDataSource(sql2, conn);
+
+            // ======================================================================================
+            // 3. JUGADORES SIN RANKING ASIGNADO
+            // ======================================================================================
+            String sql3 = """
+            SELECT p.player_id, p.first_name || ' ' || p.last_name AS jugador, p.email
+            FROM players p
+            LEFT JOIN players_game_ranking r ON p.player_id = r.player_id
+            WHERE r.ranking IS NULL
+            ORDER BY p.player_id
+        """;
+
+            JasperReportBuilder reporte3 = report()
+                    .title(cmp.text("\n\n3. Jugadores Sin Ranking Asignado").setStyle(tituloStyle))
+                    .columns(
+                            col.column("ID", "player_id", type.integerType()).setStyle(colStyle).setFixedColumns(3),
+                            col.column("Jugador", "jugador", type.stringType()).setStyle(colStyle),
+                            col.column("Email", "email", type.stringType()).setStyle(colStyle)
+                    )
+                    .setDataSource(sql3, conn);
+
+            // ======================================================================================
+            // UNIR TODO EN UN REPORTE MAESTRO
+            // ======================================================================================
+
+            try {
+                StyleBuilder mainTitleStyle = stl.style(tituloStyle).setFontSize(18);
+
+                JasperReportBuilder reporteMaestro = report();
+
+                reporteMaestro
+                        // Aquí usamos el nuevo estilo 'mainTitleStyle'
+                        .title(cmp.text("Informe Completo de Gestión de Torneos")
+                                .setStyle(mainTitleStyle))
+                        .summary(
+                                cmp.subreport(reporte1),
+                                cmp.verticalGap(20),
+                                cmp.pageBreak(),
+
+                                cmp.subreport(reporte2),
+                                cmp.verticalGap(20),
+                                cmp.pageBreak(),
+
+                                cmp.subreport(reporte3),
+                                cmp.verticalGap(20),
+                                cmp.pageBreak()
+                        )
+                        .setDataSource(new net.sf.jasperreports.engine.JREmptyDataSource());
+
+                // Generar y Mostrar
+                JasperPrint print = reporteMaestro.toJasperPrint();
+                JasperViewer.viewReport(print, false);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(null, "Error al unir reportes: " + e.getMessage());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error general: " + e.getMessage());
+        }
     }
 
 }
