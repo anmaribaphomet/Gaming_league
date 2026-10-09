@@ -66,10 +66,10 @@ Antes de ejecutar el proyecto, se necesita:
 * Tener instalado un JDK compatible con la configuración de Gradle del proyecto.
 * Contar con Gradle o utilizar el *Gradle Wrapper*, si está incluido en el repositorio.
 * Tener instalado y en ejecución PostgreSQL.
-* Disponer de la base de datos y las tablas requeridas por la aplicación.
+* Disponer de la base de datos y las tablas requeridas por la aplicación. (en el repositorio se encuentra un ejemplar con el nombre Base_de_datos_y_tablas_llenas.sql)
 * Configurar correctamente los parámetros de conexión a la base de datos.
 
-## 🚀 Instalación y ejecución
+## Instalación y ejecución
 
 1. Clona el repositorio:
 
@@ -107,7 +107,7 @@ Antes de ejecutar el proyecto, se necesita:
 
 > **Nota:** Los comandos de ejecución, la versión de Java y la configuración de la base de datos deben verificarse con los archivos reales del repositorio antes de utilizarse.
 
-## 🗄️ Base de datos
+##  Base de datos
 
 El sistema trabaja con PostgreSQL y utiliza tablas relacionadas para organizar la información. Entre las entidades y relaciones principales se encuentran:
 
