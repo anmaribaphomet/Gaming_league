@@ -1,7 +1,7 @@
 ## Creadores
 <a href="https://github.com/anmaribaphomet"> @anmaribaphomet</a><br>
 <a href="https://github.com/MushCay"> @MushCay</a><br>
-
+<a href="https://github.com/MushCay"> @isHectron</a><br>
 ## Descripcion
 Sistema de gestión diseñado para administrar información relacionada con torneos de videojuegos, 
 permitiendo organizar datos de jugadores, equipos, ligas, juegos, encuentros y clasificaciones.
